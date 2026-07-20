@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>ZZZ Drive Optimizer v1.14 使用说明书</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  body { font-family: "Noto Sans CJK SC", "Microsoft YaHei", "PingFang SC", Arial, sans-serif; color: #1f2937; line-height: 1.62; font-size: 13px; }
+  h1 { font-size: 28px; margin: 0 0 8px; color: #111827; }
+  h2 { font-size: 20px; margin: 26px 0 10px; padding-bottom: 5px; border-bottom: 1px solid #d1d5db; color: #111827; }
+  h3 { font-size: 15px; margin: 18px 0 6px; color: #111827; }
+  p { margin: 7px 0; }
+  code { background: #f3f4f6; padding: 1px 4px; border-radius: 4px; }
+  ul { margin-top: 6px; padding-left: 22px; }
+  li { margin: 3px 0; }
+  table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 12px; }
+  th, td { border: 1px solid #d1d5db; padding: 7px 8px; vertical-align: top; }
+  th { background: #f3f4f6; color: #111827; }
+  .cover { padding: 20px 0 14px; border-bottom: 2px solid #111827; margin-bottom: 20px; }
+  .badges { margin: 8px 0 10px; }
+  .badge { display: inline-block; background: #111827; color: #fff; border-radius: 999px; padding: 3px 10px; margin-right: 6px; font-size: 12px; }
+  .note { background: #f9fafb; border-left: 4px solid #60a5fa; padding: 9px 12px; margin: 10px 0; }
+  .warn { background: #fffbeb; border-left: 4px solid #f59e0b; padding: 9px 12px; margin: 10px 0; }
+  .ok { background: #ecfdf5; border-left: 4px solid #10b981; padding: 9px 12px; margin: 10px 0; }
+  .footer { margin-top: 24px; padding-top: 10px; border-top: 1px solid #d1d5db; color: #6b7280; font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="cover">
+  <h1>ZZZ Drive Optimizer v1.14 使用说明书</h1>
+  <div class="badges"><span class="badge">公开版 v1.14</span><span class="badge">佩洛伊斯面板修正</span><span class="badge">拂晓行纪口径修正</span></div>
+  <p>适用程序：<code>ZZZ_Drive_Optimizer_v1.14.exe</code><br>文档日期：2026-07-03</p>
+</div>
+
+<h2>1. 本版更新总览</h2>
+<p>v1.14 是基于 v1.13 的修正版，目标是让佩洛伊斯在未升级技能、未计入核心技F成长时，更接近用户提供的 3.0 实机代理人信息面板。</p>
+<table>
+<tr><th>项目</th><th>v1.14 行为</th></tr>
+<tr><td>佩洛伊斯面板状态</td><td>功能 3.1 新增“核心技 / 面板状态”下拉。佩洛伊斯默认使用“未升级技能 / 实机截图校准”。</td></tr>
+<tr><td>佩洛伊斯默认口径</td><td>基础攻击按 911 参与计算，异常精通基准按 120 参与计算，不额外计入核心技F暴击率 +14.4%。</td></tr>
+<tr><td>佩洛伊斯满核心口径</td><td>保留“核心技 F / MAX”，用于测试资料站满核心F数据：攻击 924、暴击率 19.4%、异常精通 93 等。</td></tr>
+<tr><td>拂晓行纪 4 件套</td><td>暴击伤害 +30% 与触发攻击力 +10% 均不写入角色详情面板，统一作为实战参考 / 排序参考。</td></tr>
+<tr><td>库存筛选</td><td>继续保留 v1.13 行为：功能 2 的套装筛选只显示当前库存中存在的套装。</td></tr>
+</table>
+
+<div class="warn"><strong>说明：</strong>佩洛伊斯默认口径中的攻击 911、异常精通 120 来自用户提供的实机截图反推校准；如果后续官方或多组实机数据确认有更稳定的成长表，可继续在后续版本更新。</div>
+
+<h2>2. 面板与实战参考的区分</h2>
+<p>本工具把游戏角色详情页能稳定看到的数值称为“面板”，把需要技能、套装、音擎或战斗状态触发的数值称为“实战参考”。</p>
+<table>
+<tr><th>计入角色详情面板</th><th>不直接计入面板</th></tr>
+<tr><td>角色 60 级基础成长、所选核心技/面板状态、音擎基础攻击力、音擎高级属性、驱动盘主副属性、2 件套静态效果。</td><td>4 件套触发效果、音擎技能效果、队友 Buff、敌人减抗/无视抗性、终结技分支、队伍条件与复杂战斗倍率。</td></tr>
+</table>
+<p>因此，佩洛伊斯使用“拂晓行纪 ×4”时，4 件套暴伤 +30% 会出现在实战参考里，而不会再把“面板暴伤”抬高 30%。</p>
+
+<h2>3. 佩洛伊斯使用建议</h2>
+<h3>3.1 未升级技能 / 未计入核心技F成长</h3>
+<p>如果你的佩洛伊斯和截图一样，技能页没有额外升级，推荐保持默认选项：</p>
+<div class="ok">功能 3.1 - 核心技 / 面板状态：<strong>未升级技能 / 实机截图校准</strong></div>
+<p>该状态会把佩洛伊斯面板基准按攻击 911、异常精通 120 计算，不计入核心技F提供的暴击率 +14.4%。</p>
+
+<h3>3.2 已升满核心技</h3>
+<p>如果账号已经投入核心技材料并升到 F / MAX，可以手动切换：</p>
+<div class="ok">功能 3.1 - 核心技 / 面板状态：<strong>核心技 F / MAX</strong></div>
+<p>该状态会使用资料站满核心F口径：生命 7673、攻击 924、防御 612、冲击力 94、暴击率 19.4%、暴击伤害 50%、异常精通 93、异常掌控 94。</p>
+
+<h2>4. 拂晓行纪与日冕遗蜕</h2>
+<table>
+<tr><th>项目</th><th>效果</th><th>v1.14 计算口径</th></tr>
+<tr><td>拂晓行纪 2 件套</td><td>以太伤害 +10%</td><td>作为稳定属性计入结果展示与参考。</td></tr>
+<tr><td>拂晓行纪 4 件套</td><td>以太代理人暴击伤害 +30%；发动强化特殊技或终结技时攻击力 +10%，持续 30 秒。</td><td>不写入角色详情面板；作为实战参考 / 排序参考显示。</td></tr>
+<tr><td>日冕遗蜕</td><td>满级基础攻击力 713，高级属性攻击力 30%；技能提供实战暴击率和以太抗性无视。</td><td>基础攻击力和高级属性攻击力计入面板；技能暴击率与抗性无视作为实战参考。</td></tr>
+</table>
+
+<h2>5. 基础使用流程</h2>
+<ol>
+<li>双击 <code>ZZZ_Drive_Optimizer_v1.14.exe</code>，保留黑色命令窗口，等待浏览器自动打开。</li>
+<li>在功能 1 手动录入驱动盘，或上传 / 粘贴截图进行 OCR 识别。识别结果必须确认后再保存。</li>
+<li>在功能 2 检查库存。套装筛选只显示当前库存中已经存在的套装。</li>
+<li>在功能 3 选择代理人、核心技 / 面板状态、音擎、4+2 套装、4/5/6 号位主属性限制和目标属性。</li>
+<li>点击“开始配装”，在功能 4 查看推荐结果。</li>
+<li>满意后点击“存入角色”，后续可通过已存套装筛选查看或管理归属。</li>
+</ol>
+
+<h2>6. 常见问题</h2>
+<h3>为什么软件结果和游戏面板仍可能差一两个词条？</h3>
+<p>优先检查库存里该套 6 个驱动盘的副词条是否与游戏中实际装备完全一致。截图识别或手动录入时，暴击率 4.8%、暴击伤害 9.6%、防御力 4.8% 这类单个副词条档位最容易造成可见偏差。</p>
+
+<h3>为什么“实战参考暴击率 / 暴伤”比面板高？</h3>
+<p>实战参考会显示音擎技能、4 件套或可量化触发效果。它用于排序参考，不等同于角色详情页静态面板。</p>
+
+<h3>拂晓行纪 4 件套暴伤 +30% 为什么不进面板？</h3>
+<p>v1.14 按用户实机截图修正：角色详情面板不显示这 30% 暴伤，因此工具把它放到实战参考，避免面板暴伤虚高。</p>
+
+<h2>7. 安全边界</h2>
+<p>本工具是本地配装辅助工具，不读取游戏进程、不读取内存、不抓包、不要求账号密码、不读取 Cookie / Token，也不修改游戏文件；只处理用户主动录入、导入、上传或粘贴的截图与 JSON 数据。</p>
+
+<h2>8. 测试清单</h2>
+<ul>
+<li>Go 单元测试：<code>go test ./...</code></li>
+<li>Go 静态检查：<code>go vet ./...</code></li>
+<li>前端 JavaScript 语法检查</li>
+<li>Linux 本地构建与 API 启动检查</li>
+<li>Windows amd64 交叉编译</li>
+<li>SHA256 校验</li>
+</ul>
+<div class="footer">ZZZ Drive Optimizer v1.14 - 本地配装辅助工具 - 2026-07-03</div>
+</body>
+</html>
