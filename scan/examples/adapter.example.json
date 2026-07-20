@@ -1,0 +1,27 @@
+{
+  "id": "example-do-not-use",
+  "region": "example",
+  "clientVersions": ["EXAMPLE-ONLY"],
+  "command": {
+    "getEquipDataRequest": 1001,
+    "getEquipDataResponse": 1002
+  },
+  "response": {
+    "retcode": {"number": 1, "xor": 0},
+    "equipList": 2
+  },
+  "equip": {
+    "uid": {"number": 1, "xor": 0},
+    "templateId": {"number": 2, "xor": 0},
+    "level": {"number": 3, "xor": 0},
+    "star": {"number": 4, "xor": 0},
+    "lock": {"number": 5, "xor": 0},
+    "mainProperties": 6,
+    "subProperties": 7
+  },
+  "property": {
+    "key": {"number": 1, "xor": 0},
+    "baseValue": {"number": 2, "xor": 0},
+    "addValue": {"number": 3, "xor": 0}
+  }
+}

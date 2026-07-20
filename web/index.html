@@ -1,0 +1,1496 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ZZZ Drive Optimizer v1.14｜绝区零驱动盘配装器</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --panel: #171a22;
+      --panel-2: #202432;
+      --text: #eef2ff;
+      --muted: #9aa3b2;
+      --border: #31384a;
+      --accent: #8ad4ff;
+      --accent-2: #b7f36d;
+      --danger: #ff8d8d;
+      --warn: #ffd166;
+      --shadow: 0 8px 24px rgba(0,0,0,.22);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top left, #1b2540 0, #0f1117 34%, #0f1117 100%);
+      color: var(--text);
+      font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif;
+    }
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      background: rgba(15, 17, 23, .88);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--border);
+    }
+    .wrap { max-width: 1280px; margin: 0 auto; padding: 18px; }
+    .titlebar { display: flex; gap: 16px; align-items: center; justify-content: space-between; }
+    h1 { font-size: 24px; margin: 0; letter-spacing: .04em; }
+    .subtitle { color: var(--muted); margin-top: 4px; font-size: 13px; }
+    nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+    nav a, button, .ghostButton {
+      border: 1px solid var(--border);
+      background: var(--panel-2);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 8px 12px;
+      cursor: pointer;
+      text-decoration: none;
+      transition: transform .08s ease, border-color .15s ease, background .15s ease;
+    }
+    nav a:hover, button:hover, .ghostButton:hover { border-color: var(--accent); transform: translateY(-1px); }
+    button.primary { background: linear-gradient(135deg, #2677ff, #00a7d7); border-color: #4bb7ff; font-weight: 700; }
+    button.success { background: linear-gradient(135deg, #3c7d2c, #4b9564); border-color: #7fdc92; }
+    button.danger { border-color: #7c3131; color: #ffd1d1; }
+    button.small, .ghostButton.small { padding: 5px 8px; font-size: 12px; border-radius: 8px; }
+    .titleActions .small { min-width: 112px; height: 30px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; text-align: center; line-height: 1; }
+    button:disabled { opacity: .55; cursor: wait; transform: none; }
+    main { max-width: 1280px; margin: 0 auto; padding: 18px; }
+    section.card {
+      background: rgba(23, 26, 34, .96);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      border-radius: var(--radius);
+      margin: 0 0 18px;
+      padding: 18px;
+    }
+    h2 { margin: 0 0 12px; font-size: 19px; }
+    h3 { margin: 14px 0 8px; font-size: 16px; }
+    .grid { display: grid; gap: 12px; }
+    .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .grid.cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    @media (max-width: 900px) {
+      .grid.cols-2, .grid.cols-3, .grid.cols-4, .grid.cols-5 { grid-template-columns: 1fr; }
+      .titlebar { align-items: flex-start; flex-direction: column; }
+    }
+    label { color: var(--muted); font-size: 13px; display: block; }
+    input, select, textarea {
+      width: 100%;
+      margin-top: 5px;
+      padding: 9px 10px;
+      color: var(--text);
+      background: #0f1320;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      outline: none;
+    }
+    input:focus, select:focus, textarea:focus { border-color: var(--accent); }
+
+    .targetInactive { opacity: .48; }
+    .targetInactive input { background: #10131a; border-color: #252b39; color: #8993a7; }
+    .targetInactive input:focus { opacity: 1; border-color: var(--accent); color: var(--text); }
+    .targetActive { opacity: 1; }
+    textarea { min-height: 72px; resize: vertical; }
+    .row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+    .between { justify-content: space-between; }
+    .statRows { display: grid; gap: 8px; }
+    .statRow { display: grid; grid-template-columns: 1.2fr .8fr; gap: 8px; }
+    @media (max-width: 700px) { .statRow { grid-template-columns: 1fr; } }
+    input.ocrDoubt, select.ocrDoubt, textarea.ocrDoubt,
+    .statRow.ocrDoubt input, .statRow.ocrDoubt select {
+      border-color: var(--danger) !important;
+      box-shadow: 0 0 0 2px rgba(255, 141, 141, .18);
+      background: #1b1118;
+    }
+    .statRow.ocrDoubt {
+      grid-template-columns: 52px 1.2fr .8fr;
+      border-left: 3px solid var(--danger);
+      border-radius: 10px;
+      padding-left: 6px;
+    }
+    .statRow.ocrDoubt::before { content: "存疑"; color: var(--danger); font-size: 12px; align-self: center; }
+    @media (max-width: 700px) {
+      .statRow.ocrDoubt { grid-template-columns: 1fr; }
+      .statRow.ocrDoubt::before { content: "识别存疑，请确认"; }
+    }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 3px 8px;
+      background: #111521;
+      color: var(--muted);
+      font-size: 12px;
+      margin: 2px 4px 2px 0;
+    }
+    .pill.good { color: #d9ffd1; border-color: #486d42; }
+    .pill.warn { color: #ffe9a8; border-color: #7d6833; }
+    .pill.bad { color: #ffd1d1; border-color: #7c3131; }
+    .muted { color: var(--muted); }
+    .fine { font-size: 12px; color: var(--muted); }
+    .notice {
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      background: #101522;
+      border-radius: 12px;
+      color: var(--muted);
+      margin: 10px 0;
+    }
+    .notice strong { color: var(--text); }
+    .tipText {
+      padding: 8px 12px;
+      border: 1px dashed rgba(154, 163, 178, .22);
+      border-left: 3px solid rgba(154, 163, 178, .28);
+      background: rgba(255,255,255,.018);
+      border-radius: 10px;
+      color: rgba(154, 163, 178, .66);
+      font-size: 12px;
+      line-height: 1.7;
+      margin: 8px 0 12px;
+      font-style: italic;
+    }
+    .tipText::before {
+      content: "提示：";
+      color: rgba(154, 163, 178, .86);
+      font-weight: 700;
+      font-style: normal;
+    }
+    .tipText strong { color: rgba(238, 242, 255, .72); }
+    .flowBlock {
+      margin-top: 14px;
+      padding: 14px;
+      border: 1px solid rgba(49, 56, 74, .78);
+      border-radius: 14px;
+      background: rgba(15, 19, 32, .38);
+    }
+    .flowBlock h3 { margin-top: 0; }
+    .flowBlock .stepTag {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      margin-right: 8px;
+      border-radius: 999px;
+      background: rgba(138, 212, 255, .12);
+      border: 1px solid rgba(138, 212, 255, .35);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .fixedDiscInfo {
+      align-self: end;
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      padding: 9px 10px;
+      border: 1px dashed rgba(154, 163, 178, .25);
+      border-radius: 10px;
+      color: rgba(154, 163, 178, .75);
+      background: rgba(255,255,255,.018);
+      font-size: 13px;
+    }
+    .specialText { color: var(--danger); font-weight: 800; }
+    select.specialSelected { color: var(--text); border-color: var(--danger); box-shadow: 0 0 0 2px rgba(255,141,141,.12); }
+    select.specialSelected option { color: var(--text); font-weight: 400; }
+    .tableWrap { width: 100%; overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
+    .inventoryTableWrap { max-height: 416px; overflow: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 820px; }
+    th, td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; text-align: left; }
+    th { background: #121724; color: #dbe7ff; position: sticky; top: 0; z-index: 1; }
+    tr:hover td { background: rgba(255,255,255,.025); }
+    .actions { white-space: nowrap; display: flex; flex-wrap: wrap; gap: 6px; }
+    .metricGrid { display: grid; grid-template-columns: repeat(4, minmax(120px,1fr)); gap: 10px; margin: 10px 0; }
+    @media (max-width: 900px) { .metricGrid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+    .metric {
+      background: #101522;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 10px;
+    }
+    .metric .v { font-size: 22px; font-weight: 800; color: var(--accent-2); }
+    .metric .k { color: var(--muted); font-size: 12px; }
+    .resultCard {
+      background: linear-gradient(180deg, #171d2c, #121622);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      margin: 12px 0;
+    }
+    .resultHead { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+    .rank { font-size: 20px; font-weight: 900; color: var(--accent); }
+    .discGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 10px; }
+    @media (max-width: 900px) { .discGrid { grid-template-columns: 1fr; } }
+    .discBox { background: #0f1320; border: 1px solid var(--border); border-radius: 12px; padding: 10px; }
+    .discBox .main { color: #f3f7ff; font-weight: 700; }
+    .discBox .subs { color: var(--muted); font-size: 12px; margin-top: 5px; }
+    .storagePath { word-break: break-all; max-width: 760px; }
+    .toast {
+      position: fixed;
+      right: 18px;
+      bottom: 18px;
+      background: #111827;
+      border: 1px solid var(--accent);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      box-shadow: var(--shadow);
+      display: none;
+      z-index: 20;
+    }
+
+    .ocrZone {
+      border: 1px dashed var(--border);
+      border-radius: 12px;
+      background: #101522;
+      padding: 14px;
+      margin: 10px 0 12px;
+      min-height: 74px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      color: var(--muted);
+    }
+    .ocrZone:focus, .ocrZone.dragover { border-color: var(--accent); outline: none; color: var(--text); }
+    .ocrPreview { max-width: 220px; max-height: 220px; border-radius: 10px; border: 1px solid var(--border); background: #05070d; }
+    pre.ocrRaw { white-space: pre-wrap; word-break: break-word; background: #0b0f18; border: 1px solid var(--border); border-radius: 10px; padding: 10px; max-height: 220px; overflow: auto; color: #dbe7ff; }
+
+    .ownerHint {
+      margin-top: 7px;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 12px;
+      text-shadow: 0 1px 3px rgba(0,0,0,.45);
+    }
+    .assignedPill { border-color: rgba(255,255,255,.35); color: #fff; background: rgba(255,255,255,.08); }
+    .buildActions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .inventoryFilterActions { display: flex; align-items: end; gap: 8px; justify-content: flex-start; }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="titlebar">
+      <div>
+        <h1>ZZZ Drive Optimizer v1.14｜绝区零驱动盘配装器</h1>
+        <div class="subtitle">本地保存库存，支持强攻/命破/异常/击破/辅助多职业配装。</div>
+      </div>
+      <div class="row titleActions">
+        <button id="exportStateBtn" class="small">导出库存 JSON</button>
+        <label class="ghostButton small" for="importStateFile">导入库存 JSON</label>
+        <input id="importStateFile" type="file" accept="application/json,.json" class="hidden" />
+        <button id="shutdownBtn" class="small danger">退出程序</button>
+      </div>
+    </div>
+    <nav>
+      <a href="#scanImport">扫描导入</a>
+      <a href="#input">录入</a>
+      <a href="#inventory">库存</a>
+      <a href="#optimizer">配装</a>
+      <a href="#results">结果</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+  <section class="card" id="statusCard">
+    <div class="row between">
+      <div>
+        <strong>状态：</strong><span id="statusText">正在加载...</span>
+        <div class="fine storagePath">数据文件：<span id="storagePath">-</span></div>
+      </div>
+      <div class="row">
+        <span class="pill good" id="discCountPill">0 个驱动盘</span>
+        <button id="changeStorageBtn" class="small" type="button" title="修改库存 JSON 保存文件夹">修改路径</button>
+        <button id="resetStorageBtn" class="small" type="button" title="恢复到软件默认保存位置">恢复默认</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" id="scanImport">
+    <h2>扫描器批量导入</h2>
+    <div class="tipText">
+      选择 <strong>ZZZ Drive Scan</strong> 生成的 <code>scan-result.json</code>。程序会先校验区服、客户端版本和协议指纹，再显示新增/更新差异；确认前不会改动库存。
+    </div>
+    <div class="row">
+      <label class="ghostButton" for="scanResultFile">选择扫描结果 JSON</label>
+      <input id="scanResultFile" type="file" accept="application/json,.json" class="hidden" />
+      <button id="applyScanImportBtn" class="success" type="button" disabled>确认写入库存</button>
+    </div>
+    <div id="scanImportPreview" class="notice">尚未选择扫描结果。</div>
+    <div class="fine">按游戏内驱动盘 UID 更新；重复导入不会产生副本。已有备注、废弃标记、配装归属和创建时间会保留。</div>
+  </section>
+
+  <section class="card" id="input">
+    <h2>1. 录入驱动盘</h2>
+    <div class="tipText">
+      套装名通过下拉选择；默认所有驱动盘均按 <strong>S 级 +15</strong> 处理。主属性会按槽位限定并自动校验；副词条数值请直接填百分比数字，例如 7.2% 填 <strong>7.2</strong>。
+    </div>
+
+    <div class="ocrPanel">
+      <h3>图片识别导入</h3>
+      <div class="tipText">
+        可上传或直接粘贴一张驱动盘详情截图；识别结果会先填入下面的录入表单，请确认、修正后再点击“保存驱动盘”。无法识别或者存疑的词条数据会被标红。
+      </div>
+      <div class="row">
+        <label class="ghostButton" for="ocrImageFile">上传驱动盘截图</label>
+        <input id="ocrImageFile" type="file" accept="image/*" class="hidden" />
+        <button type="button" id="clearOcrBtn">清空识别结果</button>
+      </div>
+      <div id="ocrDropZone" class="ocrZone" tabindex="0">
+        点击这里后按 Ctrl+V 粘贴截图，或把图片拖到这里。也可以在页面空白处直接 Ctrl+V。
+      </div>
+      <div id="ocrPreviewWrap" class="row hidden">
+        <img id="ocrPreview" class="ocrPreview" alt="待识别图片预览" />
+        <div id="ocrResult" class="notice" style="flex:1; min-width:260px">还没有识别结果。</div>
+      </div>
+    </div>
+    <form id="discForm">
+      <input type="hidden" id="discId" />
+      <div class="grid cols-4">
+        <label>套装名
+          <select id="setNameSelect" required></select>
+        </label>
+        <label id="customSetLabel" class="hidden">自定义套装名
+          <input id="customSetName" placeholder="输入套装名" />
+        </label>
+        <label>槽位
+          <select id="slot" required>
+            <option value="1">1 号位</option>
+            <option value="2">2 号位</option>
+            <option value="3">3 号位</option>
+            <option value="4">4 号位</option>
+            <option value="5">5 号位</option>
+            <option value="6">6 号位</option>
+          </select>
+        </label>
+        <input id="rarity" type="hidden" value="S" />
+        <input id="level" type="hidden" value="15" />
+        <div class="fixedDiscInfo">
+          默认：S 级 · 等级 15/15
+        </div>
+      </div>
+      <h3>主属性</h3>
+      <div class="grid cols-2">
+        <label>主属性
+          <select id="mainStatType" required></select>
+        </label>
+        <label>主属性数值
+          <input id="mainStatValue" type="number" step="0.1" placeholder="例如：24" required />
+          <div id="mainStatValueHint" class="fine" style="margin-top:5px">会按 S 级 +15 固定数值校验。</div>
+        </label>
+      </div>
+      <h3>副词条</h3>
+      <div class="tipText">
+        强攻常录：暴击率 / 暴伤 / 攻击力%；命破常录：暴击率 / 暴伤 / 生命值%；异常常录：异常精通 / 攻击力%；辅助/击破/防护可按自己需要录生命值%、攻击力%、暴击率等。
+      </div>
+      <div id="statsContainer" class="statRows"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="primary" type="submit" id="saveDiscBtn">保存驱动盘</button>
+        <button type="button" id="resetFormBtn">清空，录入新盘</button>
+        <button type="button" id="sampleDataBtn">添加示例数据</button>
+      </div>
+    </form>
+  </section>
+
+  <section class="card" id="inventory">
+    <div class="row between">
+      <h2>2. 驱动盘库存</h2>
+      <div class="row">
+        <span class="fine" id="inventorySummary"></span>
+        <button type="button" id="clearInventoryFiltersBtn" class="small">清空选择条件</button>
+      </div>
+    </div>
+    <div class="grid cols-5">
+      <label>套装
+        <select id="filterSet"><option value="">全部</option></select>
+      </label>
+      <label>搜索
+        <input id="filterText" placeholder="套装、属性..." />
+      </label>
+      <label>槽位
+        <select id="filterSlot"><option value="">全部</option></select>
+      </label>
+      <label>属性
+        <select id="filterStat"><option value="">全部</option></select>
+      </label>
+      <label>已存套装
+        <select id="filterAgent"><option value="">全部</option></select>
+      </label>
+    </div>
+    <div class="tableWrap inventoryTableWrap" style="margin-top:12px">
+      <table>
+        <thead>
+          <tr>
+            <th>槽位</th><th>套装</th><th>主属性</th><th>副词条</th><th>归属套装</th><th>等级</th><th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card" id="optimizer">
+    <h2>3. 配装目标</h2>
+    <div class="tipText">
+      配装流程已按实际使用顺序调整：先选择代理人职业与代理人，再自动带出对应专武；随后设定 4+2 套装、4/5/6 号位主属性限制，最后按职业设置配装策略、属性阈值和驱动盘占用策略。
+    </div>
+
+    <div class="flowBlock">
+      <h3><span class="stepTag">1</span>代理人选择</h3>
+      <div class="tipText">
+        代理人默认按 60 级计入；部分 3.0 代理人可按当前核心技/技能投入选择面板口径。佩洛伊斯默认采用“未升级技能 / 实机截图校准”口径。
+      </div>
+      <div class="grid cols-2">
+        <label>代理人职业
+          <select id="roleSystem">
+            <option value="ATTACK">强攻</option>
+            <option value="RUPTURE">命破</option>
+            <option value="ANOMALY">异常</option>
+            <option value="STUN">击破</option>
+            <option value="SUPPORT">辅助</option>
+          </select>
+        </label>
+        <label>代理人
+          <select id="characterSelect"></select>
+        </label>
+        <label>核心技 / 面板状态
+          <select id="coreLevelSelect">
+            <option value="0">未升级技能 / 实机截图校准</option>
+            <option value="A">核心技 A</option>
+            <option value="B">核心技 B</option>
+            <option value="C">核心技 C</option>
+            <option value="D">核心技 D</option>
+            <option value="E">核心技 E</option>
+            <option value="F">核心技 F / MAX</option>
+          </select>
+        </label>
+      </div>
+      <div id="characterInfo" class="tipText">选择代理人后，会把 60 级基础生命/攻击/防御、所选核心技/面板状态和可量化属性计入。</div>
+    </div>
+
+    <div class="flowBlock">
+      <h3><span class="stepTag">2</span>音擎加成</h3>
+      <div class="tipText">
+        选择代理人后会优先自动切换到对应专属音擎；如果该角色暂未收录专武，或你想测试其他音擎，可以在下拉菜单中手动选择。
+      </div>
+      <div class="grid cols-2">
+        <label>音擎
+          <select id="wEngineSelect"></select>
+        </label>
+        <label>专武等级
+          <select id="wEngineRank">
+            <option value="1">1 级</option>
+            <option value="2">2 级</option>
+            <option value="3">3 级</option>
+            <option value="4">4 级</option>
+            <option value="5">5 级</option>
+          </select>
+        </label>
+      </div>
+      <div id="wEngineInfo" class="tipText">选择音擎后，满级基础攻击和高级属性会计入角色界面面板；专武技能类暴击率不算入期望暴击率。</div>
+    </div>
+
+    <div class="flowBlock">
+      <h3><span class="stepTag">3</span>套装与 4 / 5 / 6 号位限制</h3>
+      <div class="grid cols-2">
+        <label>4 件套套装
+          <select id="required4Set"></select>
+        </label>
+        <label>2 件套套装
+          <select id="required2Set"></select>
+        </label>
+      </div>
+      <div class="tipText">
+        开始配装时，系统只会从上面两个套装名对应的库存中选盘，并强制结果为“所选 4 件套 × 4 + 所选 2 件套 × 2”。
+      </div>
+      <div id="driveSetInfo" class="tipText">选择套装后会显示 3.0 新驱动盘的 2 件套、4 件套与本工具计算口径。</div>
+      <div class="tipText">
+        可按角色需求锁定 4 / 5 / 6 号位主属性；选择“不限制”时，该槽位会从所有主属性候选盘里搜索。
+      </div>
+      <div class="grid cols-3">
+        <label>4 号位主属性
+          <select id="lockSlot4Main"></select>
+        </label>
+        <label>5 号位主属性
+          <select id="lockSlot5Main"></select>
+        </label>
+        <label>6 号位主属性
+          <select id="lockSlot6Main"></select>
+        </label>
+      </div>
+    </div>
+
+    <div class="flowBlock">
+      <h3><span class="stepTag">4</span>配装策略、属性阈值设定</h3>
+      <div id="strategyTip" class="tipText">
+        先填写需要参与筛选的期望属性；未作为当前职业常用目标的输入框会以灰色显示，但仍可手动输入数值启用。若填写 2 个及以上期望属性，配装策略会默认切换为“遵守严格指标”。
+      </div>
+      <div class="grid cols-5" id="targetGrid">
+        <label id="targetCritLabel" data-target-field="crit">期望暴击率 %
+          <input id="targetCritRate" type="number" step="0.1" value="80" />
+        </label>
+        <label id="targetCritDmgLabel" data-target-field="critDmg">期望暴击伤害 %
+          <input id="targetCritDmg" type="number" step="0.1" value="0" />
+        </label>
+        <label id="targetAtkLabel" data-target-field="atk">期望攻击力
+          <input id="targetFinalAttack" type="number" step="1" value="0" />
+        </label>
+        <label id="targetHpLabel" data-target-field="hp">期望生命值
+          <input id="targetFinalHP" type="number" step="1" value="0" />
+        </label>
+        <label id="targetAnomalyLabel" data-target-field="ap">期望异常精通
+          <input id="targetAnomalyProficiency" type="number" step="1" value="0" />
+        </label>
+      </div>
+      <div class="grid cols-3" id="strategySelectRow" style="margin-top:12px">
+        <label id="modeLabel">配装策略
+          <select id="mode"></select>
+        </label>
+      </div>
+    </div>
+
+    <div class="flowBlock">
+      <h3><span class="stepTag">5</span>驱动盘占用策略</h3>
+      <div class="tipText">
+        选择配装时是否主动避开已被其他代理人优先占用的驱动盘；如果驱动盘的优先持有者就是当前代理人，仍会参与搜索。
+      </div>
+      <div class="grid cols-2">
+        <label>占用策略
+          <select id="occupiedPolicy">
+            <option value="ALL">使用所有的驱动盘</option>
+            <option value="AVOID_OCCUPIED">避免使用已被占用的驱动盘</option>
+          </select>
+        </label>
+      </div>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <button id="runOptimizeBtn" class="primary">开始配装</button>
+      <button id="cancelOptimizeBtn" type="button" class="danger" disabled>强制终止</button>
+      <button id="exportResultsBtn" type="button">导出结果 JSON</button>
+      <button id="clearResultsBtn" type="button">清空</button>
+    </div>
+  </section>
+
+  <section class="card" id="results">
+    <h2>4. 配装结果</h2>
+    <div id="resultsSummary" class="notice">还没有开始配装。</div>
+    <div id="resultsContainer"></div>
+  </section>
+</main>
+
+<div id="toast" class="toast"></div>
+
+<script>
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+const SCAN_IMPORT_TOKEN = '__ZZZ_IMPORT_TOKEN__';
+const STAT_LABELS = {
+  HP_FLAT: '生命值', HP_PERCENT: '生命值%', ATK_FLAT: '攻击力', ATK_PERCENT: '攻击力%', DEF_FLAT: '防御力', DEF_PERCENT: '防御力%', BASE_ATK: '音擎/核心基础攻击力', BASE_HP: '核心基础生命值', SHEER_FORCE_FLAT: '固定贯穿力',
+  CRIT_RATE: '暴击率%', CRIT_DMG: '暴击伤害%', PEN_FLAT: '穿透值', PEN_RATIO: '穿透率%', ANOMALY_PROFICIENCY: '异常精通', ANOMALY_MASTERY: '异常掌控%', ENERGY_REGEN: '能量自动回复%', IMPACT: '冲击力%',
+  FIRE_DMG: '火属性伤害%', ICE_DMG: '冰属性伤害%', ELECTRIC_DMG: '电属性伤害%', PHYSICAL_DMG: '物理伤害%', ETHER_DMG: '以太伤害%', WIND_DMG: '风属性伤害%', ELEMENT_DMG: '通用属性伤害%', SHEER_DMG_BONUS: '贯穿伤害加成%',
+  INITIAL_ENERGY_REGEN: '初始能量自动回复', ANOMALY_MASTERY_FLAT: '异常掌控固定提升', FINAL_ANOMALY_MASTERY: '实战异常掌控', VELINA_CORE_DMG_BONUS: '维琳娜核心增伤%', VORTEX_WINDSWEPT_DMG: '乱流/风化伤害%', ETHER_RES_IGNORE: '无视以太抗性%'
+};
+const PERCENT_STATS = new Set(['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','CRIT_RATE','CRIT_DMG','PEN_RATIO','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','ELEMENT_DMG','SHEER_DMG_BONUS','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE']);
+const STAT_ORDER = ['CRIT_RATE','CRIT_DMG','ATK_PERCENT','HP_PERCENT','ANOMALY_PROFICIENCY','PEN_FLAT','PEN_RATIO','ATK_FLAT','HP_FLAT','BASE_ATK','BASE_HP','SHEER_FORCE_FLAT','DEF_PERCENT','DEF_FLAT','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','ELEMENT_DMG','SHEER_DMG_BONUS','INITIAL_ENERGY_REGEN','ANOMALY_MASTERY_FLAT','FINAL_ANOMALY_MASTERY','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE'];
+const BUILTIN_SET_NAMES = ['啄木鸟电音','震星迪斯科','河豚电音','激素朋克','摇摆爵士','灵魂摇滚','自由蓝调','极地重金属','炎狱重金属','雷暴重金属','獠牙重金属','混沌重金属','原始朋克','混沌爵士','折枝剑歌','静听嘉音','法厄同之歌','如影相随','云岿如我','山大王','月光骑士颂','拂晓生花','雪兔梦游仙境','囚徒手记','流光咏叹','沧浪行歌','呼啸沙龙','拂晓行纪'];
+const DRIVE_SET_INFO = {
+  '呼啸沙龙': {two:'2件套：风属性伤害 +10%。',four:'4件套：发动强化特殊技时异常精通 +25，最多 2 层、持续 40 秒；触发风化后造成伤害 +18%，持续 40 秒。',model:'本工具的实战参考按 2 层满叠计入异常精通 +50，并按已触发风化计入通用增伤 +18%；不混入角色详情面板。'},
+  '拂晓行纪': {two:'2件套：以太伤害 +10%。',four:'4件套：以太属性代理人暴击伤害 +30%；发动强化特殊技或终结技时攻击力 +10%，持续 30 秒。',model:'v1.14 起，4件套暴伤 +30% 与触发攻击力 +10% 均不写入角色详情面板；二者作为实战参考/排序参考显示。'}
+};
+const SLOT_MAIN_STAT_OPTIONS = {1:['HP_FLAT'],2:['ATK_FLAT'],3:['DEF_FLAT'],4:['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','CRIT_RATE','CRIT_DMG','ANOMALY_PROFICIENCY'],5:['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','PEN_RATIO','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG'],6:['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT']};
+const DEFAULT_MAIN_STAT_VALUES = {HP_FLAT:2200,ATK_FLAT:316,DEF_FLAT:184,HP_PERCENT:30,ATK_PERCENT:30,DEF_PERCENT:48,CRIT_RATE:24,CRIT_DMG:48,ANOMALY_PROFICIENCY:92,PEN_RATIO:24,FIRE_DMG:30,ICE_DMG:30,ELECTRIC_DMG:30,PHYSICAL_DMG:30,ETHER_DMG:30,WIND_DMG:30,ANOMALY_MASTERY:30,ENERGY_REGEN:60,IMPACT:18};
+
+const CHARACTERS = [
+  {name:'佩洛伊斯',fullName:'佩洛伊斯',rank:'S',element:'ETHER',faction:'法厄同',role:'ATTACK',hp:7673,atk:849,def:612,impact:94,coreDefault:'0',baseAtkBonus:75,baseAnomalyProficiency:93,baseAnomalyMastery:94,baseEnergyRegen:1,extra:{CRIT_RATE:14.4},unleveledPanel:{baseAtkExtra:62,anomalyProficiency:120,note:'按用户 3.0 实机代理人信息截图校准：在未升级技能/未计入核心技F成长时，佩洛伊斯面板基准按攻击 911、异常精通 120 参与计算；不额外计入核心技F的暴击率 +14.4%。'},coreDetail:'已加入“未升级技能 / 实机截图校准”和核心技 A-F 两类口径。资料站满核心F口径：生命 7673、攻击 924、防御 612、冲击力 94、暴击率 19.4%、暴击伤害 50%、异常精通 93、异常掌控 94；核心F额外成长包含暴击率 +14.4% 与基础攻击力 +75。队伍中有击破或支援时的额外暴伤、四分支终结技和队伍条件效果不自动并入通用指数。'},
+  {name:'叶瞬光',role:'ATTACK',hp:7673,atk:863,def:606,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'奥菲丝&「鬼火」',role:'ATTACK',hp:7788,atk:854,def:612,baseAtkBonus:75,extra:{}},
+  {name:'「席德」',role:'ATTACK',hp:7673,atk:854,def:612,baseAtkBonus:75,extra:{CRIT_DMG:28.8}},
+  {name:'雨果',role:'ATTACK',hp:7940,atk:844,def:616,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'零号·安比',role:'ATTACK',hp:7673,atk:854,def:612,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'伊芙琳',role:'ATTACK',hp:7788,atk:854,def:612,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'星见雅',role:'ATTACK',hp:7673,atk:805,def:606,baseAtkBonus:75,extra:{ANOMALY_PROFICIENCY:90},special:true,specialNote:'特殊：异常代理人，但本工具中按强攻暴击思路配装'},
+  {name:'悠真',role:'ATTACK',hp:7406,atk:840,def:600,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'朱鸢',role:'ATTACK',hp:7482,atk:844,def:600,baseAtkBonus:75,extra:{CRIT_DMG:28.8}},
+  {name:'「11号」',role:'ATTACK',hp:7673,atk:813,def:612,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'艾莲',role:'ATTACK',hp:7673,atk:863,def:606,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'猫又',role:'ATTACK',hp:7559,atk:835,def:587,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'可琳',role:'ATTACK',hp:6976,atk:732,def:604,baseAtkBonus:75,extra:{CRIT_DMG:28.8}},
+  {name:'安东',role:'ATTACK',hp:7218,atk:716,def:622,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'比利',role:'ATTACK',hp:6906,atk:712,def:606,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'般岳',role:'RUPTURE',hp:8497,atk:784,def:445,baseAtkBonus:75,hpToSheerRatio:0.1,flatSheer:150,extra:{CRIT_RATE:14.4}},
+  {name:'伊德海莉',role:'RUPTURE',hp:8497,atk:784,def:448,baseAtkBonus:75,hpToSheerRatio:0.1,extra:{CRIT_RATE:14.4}},
+  {name:'仪玄',role:'RUPTURE',hp:7953,atk:872,def:441,baseHPBonus:420,hpToSheerRatio:0.1,extra:{CRIT_RATE:14.4}},
+  {name:'真斗',role:'RUPTURE',hp:7724,atk:680,def:443,baseAtkBonus:75,hpToSheerRatio:0.1,extra:{HP_PERCENT:18}},
+  {name:'星徽·比利',role:'RUPTURE',hp:8497,atk:784,def:445,baseAtkBonus:75,hpToSheerRatio:0.1,extra:{CRIT_RATE:14.4}},
+  {name:'维琳娜',fullName:'维琳娜·艾嘉德',rank:'S',element:'WIND',faction:'罗斯凯利法·外务筹策局',role:'ANOMALY',hp:7788,atk:797,def:612,impact:86,baseAtkBonus:75,baseAnomalyProficiency:111,baseAnomalyMastery:112,baseEnergyRegen:1.2,extra:{ANOMALY_PROFICIENCY:54},coreDetail:'60级核心技F总面板：生命 7788、攻击 872、防御 612、冲击力 86、暴击率 5%、暴击伤害 50%、异常精通 165、异常掌控 112、初始能量自动回复 1.2。初始能量自动回复高于 1.2 后，每超 0.01 获得 0.21%伤害与 0.5 异常掌控，最多 35% / 84 点；配装结果会按面板回能自动换算实战参考。'},
+  {name:'爱芮',role:'ANOMALY',hp:7749,atk:788,def:619,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
+  {name:'爱丽丝',role:'ANOMALY',hp:7673,atk:805,def:606,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
+  {name:'薇薇安',role:'ANOMALY',hp:7673,atk:805,def:606,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
+  {name:'星见雅',role:'ANOMALY',hp:7673,atk:805,def:606,baseAtkBonus:75,extra:{ANOMALY_PROFICIENCY:90}},
+  {name:'柳',role:'ANOMALY',hp:7788,atk:797,def:612,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
+  {name:'柏妮思',role:'ANOMALY',hp:7368,atk:788,def:600,baseAtkBonus:75,extra:{ENERGY_REGEN:0.36}},
+  {name:'简',role:'ANOMALY',hp:7788,atk:805,def:606,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
+  {name:'格莉丝',role:'ANOMALY',hp:7482,atk:751,def:600,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
+  {name:'派派',role:'ANOMALY',hp:6976,atk:683,def:612,baseAtkBonus:75,extra:{ENERGY_REGEN:0.36}}
+];
+
+CHARACTERS.push(...[
+  {name:'南宫羽',role:'STUN',hp:8373,atk:746,def:622,extra:{ANOMALY_PROFICIENCY:60}},
+  {name:'琉音',role:'STUN',hp:8250,atk:758,def:612,extra:{CRIT_RATE:14.4}},
+  {name:'橘福福',role:'STUN',hp:8250,atk:765,def:597,extra:{CRIT_RATE:14.4}},
+  {name:'「扳机」',role:'STUN',hp:7923,atk:750,def:600,extra:{}},
+  {name:'普尔克拉',role:'STUN',hp:7612,atk:665,def:606,extra:{}},
+  {name:'波可娜',role:'STUN',hp:7612,atk:665,def:606,extra:{}},
+  {name:'青衣',role:'STUN',hp:8250,atk:758,def:612,extra:{}},
+  {name:'莱特',role:'STUN',hp:8253,atk:797,def:612,extra:{}},
+  {name:'莱卡恩',role:'STUN',hp:8416,atk:728,def:606,extra:{}},
+  {name:'珂蕾妲',role:'STUN',hp:8127,atk:735,def:594,extra:{}},
+  {name:'安比',role:'STUN',hp:7500,atk:658,def:612,extra:{}},
+  {name:'千夏',role:'SUPPORT',hp:8477,atk:750,def:600,extra:{}},
+  {name:'卢西娅',role:'SUPPORT',hp:8477,atk:758,def:594,extra:{}},
+  {name:'柚叶',role:'SUPPORT',hp:8829,atk:758,def:612,extra:{}},
+  {name:'耀嘉音',role:'SUPPORT',hp:8609,atk:715,def:600,extra:{}},
+  {name:'丽娜',role:'SUPPORT',hp:8609,atk:717,def:600,extra:{PEN_RATIO:14}},
+  {name:'苍角',role:'SUPPORT',hp:8025,atk:665,def:597,extra:{}},
+  {name:'露西',role:'SUPPORT',hp:8025,atk:658,def:612,extra:{}},
+  {name:'妮可',role:'SUPPORT',hp:8145,atk:649,def:622,extra:{}}
+]);
+const WENGINE_BASE_ATK = {
+  '钢铁肉垫':684,'硫磺石':684,'拘缚者':684,'燃狱齿轮':684,'嵌合编译器':684,'啜泣摇篮':684,
+  '深海访客':713,'防暴者Ⅵ型':713,'玉壶青冰':713,'淬锋钳刺':713,'奔袭獠牙':713,'灼心摇壶':713,'焰心桂冠':713,'时流贤者':713,
+  '霰落星殿':743,'残心青囊':713,'玲珑妆匣':713,'心弦夜响':713,'牺牲洁纯':713,'索魂影眸':713,'飞鸟星梦':713,'千面日陨':713,'青溟笼舍':743,
+  '福虓炉炉':713,'狸法七变化':713,'十方锻星':713,'机巧心种':713,'嚣枪喧焰':713,'铸梦炉歌':713,'海妖摇篮':713,'昨夜来电':713,'怒目金刚':713,'云霓孤光':743,
+  '半糖雪兔':713,'思络成歌':713,'壳中之灵':713,'霓虹妄想':713,'鳞齿寻踪':713,'朔月裁霜':713,'辉骑面铠':713,'琳琅鎏心':713,'日冕遗蜕':713,
+  '仿制星徽引擎':624,'含羞恶面':624,'好斗的阿炮':624,'家政员':624,'德玛拉电池Ⅱ型':624,'比格气缸':624,'旋钻机-赤轴':624,'维序者-特化型':624,'聚宝箱':624,'轰鸣座驾':624,'裁纸刀':624,'燔火胧夜':624,'震元奇枢':624,
+  '强音热望':594,'星徽引擎':594,'触电唇彩':594,'雨林饕客':594,'双生泣星':594,'加农转子':594
+};
+const RELEASE_ORDER_BY_NAME = {
+  '维琳娜':3002,'维琳娜·艾嘉德':3002,'佩洛伊斯':3001,
+  '普罗米娅':2802,'星徽·比利':2801,
+  '希希芙':2702,'南宫羽':2701,
+  '爱芮':2602,'千夏':2601,
+  '照':2502,'叶瞬光':2501,
+  '般岳':2402,'琉音':2401,
+  '伊德海莉':2303,'卢西娅':2302,'真斗':2301,
+  '奥菲丝&「鬼火」':2202,'「席德」':2201,
+  '爱丽丝':2102,'柚叶':2101,
+  '橘福福':2003,'仪玄':2002,'潘引壶':2001,
+  '雨果':1702,'薇薇安':1701,
+  '「扳机」':1603,'零号·安比':1602,'普尔克拉':1601,'波可娜':1601,
+  '伊芙琳':1502,'耀嘉音':1501,
+  '星见雅':1402,'雅':1402,'悠真':1401,
+  '莱特':1302,'柳':1301,
+  '柏妮思':1202,'凯撒':1201,
+  '简':1103,'赛斯':1102,'青衣':1101,
+  '朱鸢':1002,'艾莲':1001,
+  '「11号」':1000,'猫又':1000,'可琳':1000,'安东':1000,'比利':1000,'格莉丝':1000,'派派':1000,
+  '丽娜':1000,'莱卡恩':1000,'珂蕾妲':1000,'苍角':1000,'露西':1000,'安比':1000,'本':1000,'妮可':1000
+};
+function normalizeReleaseName(name){return String(name||'').trim().replace(/^星间雅$/,'星见雅');}
+function releaseOrderOfName(name){return RELEASE_ORDER_BY_NAME[normalizeReleaseName(name)] ?? 0;}
+function releaseOrderOfCharacter(c){return releaseOrderOfName(c?.releaseName||c?.name);}
+function releaseOrderOfWEngine(e){return e?.releaseOrder ?? releaseOrderOfName(e?.character);}
+const STRICT_MODE_OPTION = ['STRICT_TARGETS','遵守严格指标'];
+const ROLE_MODES = {ATTACK:[['MAX_CD','暴击率达标后，最高暴伤'],['MAX_WORDS','暴击率达标后，最高有效词条数'],STRICT_MODE_OPTION],RUPTURE:[['MAX_CD','暴击率达标后，最高暴伤'],['RUPTURE_SHEER','暴击率达标后，贯穿输出综合最高'],['MAX_WORDS','暴击率达标后，最高有效词条数'],STRICT_MODE_OPTION],ANOMALY:[['ANOMALY_AP','优先最高异常精通'],['ANOMALY_ATK','优先最高攻击力'],['ANOMALY_WORDS','综合词条数最高'],STRICT_MODE_OPTION],STUN:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION],SUPPORT:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION]};
+const WENGINE_EFFECT_MODE_TEXT = '音擎60级基础攻击力和高级属性计入角色界面面板；音擎技能属性按说明作为满触发实战参考，通常不混入角色界面暴击率。期望暴击率只按角色详情面板值判断；敌人抗性、队伍条件与专属倍率若无法通用量化，只展示而不写入期望指数。';
+const WENGINES = [{"name":"琳琅鎏心","character":"维琳娜","base":{"ENERGY_REGEN":60},"ranks":[{"ANOMALY_PROFICIENCY":130,"VORTEX_WINDSWEPT_DMG":14},{"ANOMALY_PROFICIENCY":149,"VORTEX_WINDSWEPT_DMG":16},{"ANOMALY_PROFICIENCY":168,"VORTEX_WINDSWEPT_DMG":18},{"ANOMALY_PROFICIENCY":187,"VORTEX_WINDSWEPT_DMG":20},{"ANOMALY_PROFICIENCY":206,"VORTEX_WINDSWEPT_DMG":22}],"note":"满级基础攻击 713，高级属性能量自动回复 60%。实战参考按专武效果 2 层满叠计算：自身常驻异常精通与全队异常精通同时计入佩戴者（1级为 70+60=130）；乱流/风化专属增伤仅展示，不并入通用伤害指数。"},{"name":"日冕遗蜕","character":"佩洛伊斯","base":{"ATK_PERCENT":30},"ranks":[{"CRIT_RATE":20,"ETHER_RES_IGNORE":16},{"CRIT_RATE":20,"ETHER_RES_IGNORE":17.5},{"CRIT_RATE":20,"ETHER_RES_IGNORE":19},{"CRIT_RATE":20,"ETHER_RES_IGNORE":20.5},{"CRIT_RATE":20,"ETHER_RES_IGNORE":22}],"note":"满级基础攻击 713，高级属性攻击力 30%。音擎技能提供 20%实战暴击率；佩洛伊斯进入战斗或发动终结技后获得「蚀影」，无视以太抗性按等级显示。由于通用指数没有敌人抗性参数，抗性无视不直接参与排序。"},{"name":"云霓孤光","character":"叶瞬光","base":{"CRIT_DMG":48},"ranks":[{"CRIT_DMG":25},{"CRIT_DMG":28.7},{"CRIT_DMG":32.5},{"CRIT_DMG":36.2},{"CRIT_DMG":40}],"note":"计入满级高级属性，以及开启以太帷幕后可量化的暴击伤害。"},{"name":"十方锻星","character":"爱丽丝","base":{"ATK_PERCENT":30},"ranks":[{"ANOMALY_MASTERY":60},{"ANOMALY_MASTERY":69},{"ANOMALY_MASTERY":78},{"ANOMALY_MASTERY":87},{"ANOMALY_MASTERY":96}],"note":"计入满级高级属性，以及被动异常掌控；伤害提升不参与本工具排序。"},{"name":"千面日陨","character":"雨果","base":{"CRIT_RATE":24},"ranks":[{"CRIT_DMG":45},{"CRIT_DMG":51.75},{"CRIT_DMG":58.5},{"CRIT_DMG":65.25},{"CRIT_DMG":72}],"note":"计入满级高级属性，以及被动暴击伤害。"},{"name":"半糖雪兔","character":"照","base":{"HP_PERCENT":30},"ranks":[{"ATK_PERCENT":10,"HP_PERCENT":10,"CRIT_DMG":30},{"ATK_PERCENT":11.5,"HP_PERCENT":11.5,"CRIT_DMG":34.5},{"ATK_PERCENT":13,"HP_PERCENT":13,"CRIT_DMG":39},{"ATK_PERCENT":14.5,"HP_PERCENT":14.5,"CRIT_DMG":43.5},{"ATK_PERCENT":16,"HP_PERCENT":16,"CRIT_DMG":48}],"note":"计入满级高级属性，以及可量化的全队攻击、生命、暴伤类加成。"},{"name":"啜泣摇篮","character":"丽娜","base":{"PEN_RATIO":24},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；伤害提升不参与本工具排序。"},{"name":"嚣枪喧焰","character":"奥菲丝&「鬼火」","base":{"ENERGY_REGEN":60},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及被动暴击率；无视防御不参与本工具排序。"},{"name":"壳中之灵","character":"爱芮","base":{"ANOMALY_MASTERY":30},"ranks":[{"ANOMALY_PROFICIENCY":90},{"ANOMALY_PROFICIENCY":103.5},{"ANOMALY_PROFICIENCY":117},{"ANOMALY_PROFICIENCY":130.5},{"ANOMALY_PROFICIENCY":144}],"note":"计入满级高级属性，以及可量化的异常精通。"},{"name":"奔袭獠牙","character":"凯撒","base":{"IMPACT":18},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；护盾、失衡值、增伤不参与本工具排序。"},{"name":"嵌合编译器","character":"格莉丝","base":{"PEN_RATIO":24},"ranks":[{"ATK_PERCENT":12,"ANOMALY_PROFICIENCY":75},{"ATK_PERCENT":15,"ANOMALY_PROFICIENCY":93},{"ATK_PERCENT":18,"ANOMALY_PROFICIENCY":111},{"ATK_PERCENT":21,"ANOMALY_PROFICIENCY":129},{"ATK_PERCENT":24,"ANOMALY_PROFICIENCY":150}],"note":"计入满级高级属性、攻击力加成，以及满层异常精通。"},{"name":"心弦夜响","character":"伊芙琳","base":{"CRIT_RATE":24},"ranks":[{"CRIT_DMG":50},{"CRIT_DMG":57.5},{"CRIT_DMG":65},{"CRIT_DMG":72.5},{"CRIT_DMG":80}],"note":"计入满级高级属性，以及被动暴击伤害。"},{"name":"怒目金刚","character":"般岳","base":{"HP_PERCENT":30},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及被动暴击率。"},{"name":"思络成歌","character":"千夏","base":{"ENERGY_REGEN":60},"ranks":[{"ATK_PERCENT":10},{"ATK_PERCENT":11.5},{"ATK_PERCENT":13},{"ATK_PERCENT":14.5},{"ATK_PERCENT":16}],"note":"计入满级高级属性，以及可量化的全队攻击力加成；伤害提升不参与本工具排序。"},{"name":"拘缚者","character":"莱卡恩","base":{"IMPACT":18},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；普攻伤害/失衡值效果不参与本工具排序。"},{"name":"时流贤者","character":"柳","base":{"ATK_PERCENT":30},"ranks":[{"ANOMALY_PROFICIENCY":75},{"ANOMALY_PROFICIENCY":85},{"ANOMALY_PROFICIENCY":95},{"ANOMALY_PROFICIENCY":105},{"ANOMALY_PROFICIENCY":115}],"note":"计入满级高级属性，以及可量化的异常精通。"},{"name":"昨夜来电","character":"琉音","base":{"CRIT_RATE":24},"ranks":[{"CRIT_DMG":30},{"CRIT_DMG":34.5},{"CRIT_DMG":39},{"CRIT_DMG":43.5},{"CRIT_DMG":48}],"note":"计入满级高级属性，以及满层全队暴击伤害。"},{"name":"朔月裁霜","character":"普罗米娅","base":{"ANOMALY_MASTERY":30},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；冰伤与异放增伤不参与本工具排序。"},{"name":"机巧心种","character":"「席德」","base":{"CRIT_RATE":24},"ranks":[{"CRIT_RATE":15},{"CRIT_RATE":17},{"CRIT_RATE":19},{"CRIT_RATE":21},{"CRIT_RATE":23}],"note":"计入满级高级属性，以及被动暴击率；增伤和无视防御不参与本工具排序。"},{"name":"残心青囊","character":"悠真","base":{"CRIT_DMG":48},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及基础+条件触发后的暴击率。"},{"name":"海妖摇篮","character":"伊德海莉","base":{"HP_PERCENT":30},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及低生命条件下的暴击率。"},{"name":"淬锋钳刺","character":"简","base":{"ANOMALY_PROFICIENCY":90},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；物理增伤和异常积蓄效率不参与本工具排序。"},{"name":"深海访客","character":"艾莲","base":{"CRIT_RATE":24},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":25},{"CRIT_RATE":30},{"CRIT_RATE":35},{"CRIT_RATE":40}],"note":"计入满级高级属性，以及两段暴击率均触发后的数值。"},{"name":"灼心摇壶","character":"柏妮思","base":{"ATK_PERCENT":30},"ranks":[{"ANOMALY_PROFICIENCY":50},{"ANOMALY_PROFICIENCY":62},{"ANOMALY_PROFICIENCY":75},{"ANOMALY_PROFICIENCY":87},{"ANOMALY_PROFICIENCY":100}],"note":"计入满级高级属性，以及可量化的异常精通。"},{"name":"焰心桂冠","character":"莱特","base":{"IMPACT":18},"ranks":[{"IMPACT":25},{"IMPACT":28.75},{"IMPACT":32.5},{"IMPACT":36.25},{"IMPACT":40}],"note":"计入满级高级属性，以及快速/极限支援后的冲击力；队伍暴伤不参与本工具排序。"},{"name":"燃狱齿轮","character":"珂蕾妲","base":{"IMPACT":18},"ranks":[{"IMPACT":20},{"IMPACT":25},{"IMPACT":30},{"IMPACT":35},{"IMPACT":40}],"note":"计入满级高级属性，以及强化特殊技后的满层冲击力。"},{"name":"牺牲洁纯","character":"零号·安比","base":{"CRIT_DMG":48},"ranks":[{"CRIT_DMG":60},{"CRIT_DMG":69},{"CRIT_DMG":78},{"CRIT_DMG":87},{"CRIT_DMG":96}],"note":"计入满级高级属性，以及基础+满层后的暴击伤害。"},{"name":"狸法七变化","character":"柚叶","base":{"ENERGY_REGEN":60},"ranks":[{"ANOMALY_MASTERY":30,"ANOMALY_PROFICIENCY":60},{"ANOMALY_MASTERY":34,"ANOMALY_PROFICIENCY":69},{"ANOMALY_MASTERY":39,"ANOMALY_PROFICIENCY":78},{"ANOMALY_MASTERY":43,"ANOMALY_PROFICIENCY":87},{"ANOMALY_MASTERY":48,"ANOMALY_PROFICIENCY":96}],"note":"计入满级高级属性、异常掌控，以及全队异常精通。"},{"name":"玉壶青冰","character":"青衣","base":{"IMPACT":18},"ranks":[{"IMPACT":21},{"IMPACT":26.4},{"IMPACT":31.5},{"IMPACT":36.6},{"IMPACT":42}],"note":"计入满级高级属性，以及满层冲击力；全队增伤不参与本工具排序。"},{"name":"玲珑妆匣","character":"耀嘉音","base":{"ATK_PERCENT":30},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；回能与全队增伤不参与本工具排序。"},{"name":"硫磺石","character":"「11号」","base":{"ATK_PERCENT":30},"ranks":[{"ATK_PERCENT":28},{"ATK_PERCENT":35.2},{"ATK_PERCENT":41.6},{"ATK_PERCENT":48},{"ATK_PERCENT":56}],"note":"计入满级高级属性，以及普通/冲刺/闪避反击命中后的满层攻击力。"},{"name":"福虓炉炉","character":"橘福福","base":{"ATK_PERCENT":30},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；失衡值与全队增伤不参与本工具排序。"},{"name":"索魂影眸","character":"「扳机」","base":{"CRIT_RATE":24},"ranks":[{"IMPACT":32},{"IMPACT":36},{"IMPACT":40},{"IMPACT":44},{"IMPACT":48}],"note":"计入满级高级属性，以及满层冲击力；防御降低不参与本工具排序。"},{"name":"钢铁肉垫","character":"猫又","base":{"CRIT_RATE":24},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；物理伤害和背击增伤不参与本工具排序。"},{"name":"铸梦炉歌","character":"卢西娅","base":{"HP_PERCENT":30},"ranks":[{"HP_PERCENT":15},{"HP_PERCENT":17.3},{"HP_PERCENT":19.5},{"HP_PERCENT":21.8},{"HP_PERCENT":24}],"note":"计入满级高级属性，以及全队生命值上限加成；增伤不参与本工具排序。"},{"name":"防暴者Ⅵ型","character":"朱鸢","base":{"CRIT_DMG":48},"ranks":[{"CRIT_RATE":15},{"CRIT_RATE":18.8},{"CRIT_RATE":22.6},{"CRIT_RATE":26.4},{"CRIT_RATE":30}],"note":"计入满级高级属性，以及被动暴击率。"},{"name":"霓虹妄想","character":"南宫羽","base":{"ANOMALY_MASTERY":30},"ranks":[{"ANOMALY_PROFICIENCY":150},{"ANOMALY_PROFICIENCY":172},{"ANOMALY_PROFICIENCY":195},{"ANOMALY_PROFICIENCY":217},{"ANOMALY_PROFICIENCY":241}],"note":"计入满级高级属性，以及基础+满层额外异常精通。"},{"name":"霰落星殿","character":"星见雅","base":{"CRIT_RATE":24},"ranks":[{"CRIT_DMG":50},{"CRIT_DMG":57},{"CRIT_DMG":65},{"CRIT_DMG":72},{"CRIT_DMG":80}],"note":"计入满级高级属性，以及被动暴击伤害。"},{"name":"青溟笼舍","character":"仪玄","base":{"HP_PERCENT":30},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及被动暴击率；例如 1 级提供 20% 暴击率。"},{"name":"飞鸟星梦","character":"薇薇安","base":{"ANOMALY_PROFICIENCY":90},"ranks":[{"ANOMALY_PROFICIENCY":120},{"ANOMALY_PROFICIENCY":138},{"ANOMALY_PROFICIENCY":156},{"ANOMALY_PROFICIENCY":174},{"ANOMALY_PROFICIENCY":192}],"note":"计入满级高级属性，以及以太伤害触发后的满层异常精通。"},{"name":"鳞齿寻踪","character":"希希芙","base":{"ENERGY_REGEN":60},"ranks":[{"CRIT_RATE":25},{"CRIT_RATE":28.8},{"CRIT_RATE":32.5},{"CRIT_RATE":36.3},{"CRIT_RATE":40}],"note":"计入满级高级属性，以及被动暴击率。"},{"name":"辉骑面铠","character":"星徽·比利","base":{"HP_PERCENT":30},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及被动暴击率；例如 1 级提供 20% 暴击率。"},{"name":"仿制星徽引擎","character":"比利","base":{"ATK_PERCENT":25},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；远距物理增伤不参与本工具排序。"},{"name":"含羞恶面","character":"苍角","base":{"ATK_PERCENT":25},"ranks":[{"ATK_PERCENT":8},{"ATK_PERCENT":9.2},{"ATK_PERCENT":10.4},{"ATK_PERCENT":11.6},{"ATK_PERCENT":12.8}],"note":"计入满级高级属性，以及强化特殊技后的满层全队攻击力。"},{"name":"好斗的阿炮","character":"露西","base":{"ENERGY_REGEN":50},"ranks":[{"ATK_PERCENT":10},{"ATK_PERCENT":11.2},{"ATK_PERCENT":12.8},{"ATK_PERCENT":14.4},{"ATK_PERCENT":16}],"note":"计入满级高级属性，以及满层全队攻击力。"},{"name":"家政员","character":"可琳","base":{"ATK_PERCENT":25},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；物理伤害提升不参与本工具排序。"},{"name":"德玛拉电池Ⅱ型","character":"安比","base":{"IMPACT":15},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；电伤与回能效率不参与本工具排序。"},{"name":"比格气缸","character":"本","base":{"DEF_PERCENT":40},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性。"},{"name":"旋钻机-赤轴","character":"安东","base":{"ENERGY_REGEN":50},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；电伤不参与本工具排序。"},{"name":"维序者-特化型","character":"赛斯","base":{"ATK_PERCENT":25},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；能量回复与异常积蓄不参与本工具排序。"},{"name":"聚宝箱","character":"妮可","base":{"ENERGY_REGEN":50},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；以太伤害后的全队增伤和每秒回能不参与本工具排序。"},{"name":"轰鸣座驾","character":"派派","base":{"ATK_PERCENT":25},"ranks":[{"ATK_PERCENT":8,"ANOMALY_PROFICIENCY":40},{"ATK_PERCENT":9.2,"ANOMALY_PROFICIENCY":46},{"ATK_PERCENT":10.4,"ANOMALY_PROFICIENCY":52},{"ATK_PERCENT":11.6,"ANOMALY_PROFICIENCY":58},{"ATK_PERCENT":12.8,"ANOMALY_PROFICIENCY":64}],"note":"随机效果按攻击力与异常精通都可触发计入；实际战斗请按触发情况判断。"},{"name":"裁纸刀","character":"波可娜","base":{"IMPACT":15},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；追加攻击伤害/失衡值不参与本工具排序。"},{"name":"燔火胧夜","character":"真斗","base":{"HP_PERCENT":25},"ranks":[{"CRIT_RATE":15},{"CRIT_RATE":17.25},{"CRIT_RATE":19.5},{"CRIT_RATE":21.75},{"CRIT_RATE":24}],"note":"计入满级高级属性，以及生命值降低后的暴击率。"},{"name":"震元奇枢","character":"潘引壶","base":{"ATK_PERCENT":25},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；伤害增加和回能不参与本工具排序。"}];
+const OCR_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
+const OCR_WORKER_OPTIONS = {
+  workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+  corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0'
+};
+let state = { version: 114, discs: [], setEffects: [], characterBuilds: [], discClaims: [], claimsInitialized: true }, storagePath = '', defaultStoragePath = '', usingDefaultStoragePath = true, editingId = null, lastResults = null, lastOptimizeMode = 'MAX_CD', lastOptimizeRole = 'ATTACK', lastOcrData = null, browserTesseractPromise = null, optimizeRunToken = 0, lastClaimBuildNameByAgent = {}, modeTouchedByUser = false, pendingScanExport = null, pendingScanPreview = null;
+function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));}
+function statLabel(type){return STAT_LABELS[type]||type||'未选择';}
+function fmtNum(v,digits=1){const n=Number(v); if(!Number.isFinite(n)) return '0'; return Number.isInteger(n)?String(n):n.toFixed(digits).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');}
+function formatStatValue(stat){if(!stat||!stat.type)return '-'; const unit=PERCENT_STATS.has(stat.type)?'%':''; return `${statLabel(stat.type)} ${fmtNum(stat.value,2)}${unit}`;}
+
+function addToStats(target, source){for(const [type,value] of Object.entries(source||{})){const n=Number(value); if(type&&Number.isFinite(n)&&Math.abs(n)>1e-9)target[type]=(target[type]||0)+n;} return target;}
+function statMapText(stats){const parts=[]; for(const type of STAT_ORDER){const value=stats?.[type]; if(value)parts.push(`${statLabel(type)} ${fmtNum(value,2)}${PERCENT_STATS.has(type)?'%':''}`);} return parts.join('，')||'无可计入属性';}
+function wEngineLabel(engine){return `${engine.name}（${engine.character}）`;}
+function characterDisplayName(c){const name=c?.fullName||c?.name||''; return c?.special?`⚠ ${name}（特殊异常→强攻）`:name;}
+function currentWEngine(){const value=$('#wEngineSelect')?.value??''; if(value==='')return null; const idx=Number(value); return Number.isInteger(idx)?WENGINES[idx]||null:null;}
+function selectedWEngineRank(){const rank=parseInt($('#wEngineRank')?.value||'1',10); return Math.min(5,Math.max(1,Number.isFinite(rank)?rank:1));}
+function wEngineBaseAtk(engine){if(!engine)return 0; if(Object.prototype.hasOwnProperty.call(WENGINE_BASE_ATK,engine.name))return WENGINE_BASE_ATK[engine.name]; return engine.character&&engine.character.startsWith('通用')?594:713;}
+function wEnginePanelStats(engine){const out={}; if(!engine)return out; addToStats(out,{BASE_ATK:wEngineBaseAtk(engine)}); addToStats(out,engine.base); return out;}
+function wEngineCombatStats(engine,rank){const out={}; if(!engine)return out; const ranks=Array.isArray(engine.ranks)?engine.ranks:[]; addToStats(out,ranks[Math.min(4,Math.max(0,rank-1))]||{}); return out;}
+function wEngineStats(engine,rank){const out={}; addToStats(out,wEnginePanelStats(engine)); addToStats(out,wEngineCombatStats(engine,rank)); return out;}
+function selectedWEngineSummary(){const engine=currentWEngine(); if(!engine)return '不计入音擎'; const rank=selectedWEngineRank(); const panel=statMapText(wEnginePanelStats(engine)); const combat=statMapText(wEngineCombatStats(engine,rank)); return `${wEngineLabel(engine)} · ${rank}级｜面板计入：${panel}｜实战/部分排序参考：${combat}`;}
+function sameAgentName(a,b){return normalizeReleaseName(a)===normalizeReleaseName(b);}
+function exclusiveWEngineIndexForCharacter(c){if(!c)return -1; const idx=WENGINES.findIndex(e=>sameAgentName(e.character,c.name)); return idx;}
+function fillWEngineControls(){const sel=$('#wEngineSelect'); if(!sel)return; const prev=sel.value; const currentChar=currentCharacter(); const exclusiveIdx=exclusiveWEngineIndexForCharacter(currentChar); const sorted=WENGINES.map((e,i)=>({e,i,exclusive:i===exclusiveIdx})).sort((a,b)=>(b.exclusive?1:0)-(a.exclusive?1:0)||releaseOrderOfWEngine(b.e)-releaseOrderOfWEngine(a.e)||String(a.e.character).localeCompare(String(b.e.character),'zh-CN')||String(a.e.name).localeCompare(String(b.e.name),'zh-CN')); sel.innerHTML='<option value="">不计入音擎</option>'+sorted.map(x=>`<option value="${x.i}">${x.exclusive?'★ 专武：':''}${escapeHtml(wEngineLabel(x.e))}</option>`).join(''); if(prev!==''&&WENGINES[Number(prev)])sel.value=prev; else if(exclusiveIdx>=0)sel.value=String(exclusiveIdx); updateWEngineInfo();}
+function syncWEngineToCharacter({force=true}={}){const sel=$('#wEngineSelect'); if(!sel)return; const c=currentCharacter(); const idx=exclusiveWEngineIndexForCharacter(c); fillWEngineControls(); if(idx>=0 && force){sel.value=String(idx); updateWEngineInfo(); return true;} if(idx<0 && force && sel.value===''){updateWEngineInfo();} return false;}
+function updateWEngineInfo(){const el=$('#wEngineInfo'); if(!el)return; const engine=currentWEngine(); const c=currentCharacter(); if(!engine){const cText=c?`当前角色「${c.name}」暂未自动匹配到专属音擎，或你选择了不计入音擎；可以从下拉菜单手动选择其他角色音擎进行测试。`:'未选择音擎：最终面板只计算基础 5/50、角色成长/核心、驱动盘主副属性与2件套静态效果。'; el.textContent=cText; return;} const rank=selectedWEngineRank(); const panel=wEnginePanelStats(engine); const combat=wEngineCombatStats(engine,rank); const relation=c?(sameAgentName(engine.character,c.name)?'已自动匹配当前代理人专武。':'当前选择的是其他代理人的音擎，请确认这是你想测试的搭配。'):'已选择音擎。'; el.innerHTML=`${escapeHtml(WENGINE_EFFECT_MODE_TEXT)}<br><strong>${escapeHtml(wEngineLabel(engine))} · ${rank}级：</strong><br>${escapeHtml(relation)}<br>面板计入：${escapeHtml(statMapText(panel))}<br>实战/部分排序参考：${escapeHtml(statMapText(combat))}<br>${escapeHtml(engine.note||'')}`;}
+function currentCharacter(){const value=$('#characterSelect')?.value??''; const idx=Number(value); return Number.isInteger(idx)?CHARACTERS[idx]||null:null;}
+const ELEMENT_LABELS={FIRE:'火',ICE:'冰',ELECTRIC:'电',PHYSICAL:'物理',ETHER:'以太',WIND:'风'};
+const CORE_LEVEL_ORDER=['0','A','B','C','D','E','F'];
+function coreLevelIndex(value){const idx=CORE_LEVEL_ORDER.indexOf(String(value||'F').toUpperCase()); return idx>=0?idx:6;}
+function defaultCoreLevelForCharacter(c){return c?.coreDefault||'F';}
+function selectedCoreLevelValue(){return $('#coreLevelSelect')?.value||defaultCoreLevelForCharacter(currentCharacter());}
+function selectedCoreLevelIndex(){return coreLevelIndex(selectedCoreLevelValue());}
+function coreLevelLabel(value=selectedCoreLevelValue()){return value==='0'?'未升级技能 / 实机截图校准':(value==='F'?'核心技 F / MAX':`核心技 ${value}`);}
+function syncCoreLevelToCharacter({force=true}={}){const sel=$('#coreLevelSelect'); if(!sel)return; const c=currentCharacter(); if(force||!sel.value)sel.value=defaultCoreLevelForCharacter(c);}
+function coreAdvancedRatio(levelIndex=selectedCoreLevelIndex()){return [1,3,5].filter(step=>levelIndex>=step).length/3;}
+function coreBaseRatio(levelIndex=selectedCoreLevelIndex()){return [2,4,6].filter(step=>levelIndex>=step).length/3;}
+function scaledStats(source,ratio){const out={}; for(const [type,value] of Object.entries(source||{})){const n=Number(value); if(type&&Number.isFinite(n)&&Math.abs(n)>1e-9&&ratio>0)out[type]=n*ratio;} return out;}
+function isPyrois(c){return normalizeReleaseName(c?.name||c?.fullName||'')===normalizeReleaseName('佩洛伊斯');}
+function characterStats(c,levelIndex=selectedCoreLevelIndex()){
+  const out={}; if(!c)return out;
+  if(isPyrois(c)&&levelIndex===0&&c.unleveledPanel){
+    addToStats(out,{BASE_ATK:Number(c.unleveledPanel.baseAtkExtra||0),ANOMALY_PROFICIENCY:Number(c.unleveledPanel.anomalyProficiency||0)});
+    return out;
+  }
+  addToStats(out,{ANOMALY_PROFICIENCY:c.baseAnomalyProficiency||0});
+  const baseRatio=coreBaseRatio(levelIndex), advRatio=coreAdvancedRatio(levelIndex);
+  addToStats(out,{BASE_ATK:(c.baseAtkBonus||0)*baseRatio,BASE_HP:(c.baseHPBonus||0)*baseRatio,SHEER_FORCE_FLAT:(c.flatSheer||0)*baseRatio});
+  addToStats(out,scaledStats(c.extra||{},advRatio));
+  return out;
+}
+function characterPanelBase(c,levelIndex=selectedCoreLevelIndex()){if(!c)return {hp:0,atk:0,def:0}; const baseRatio=coreBaseRatio(levelIndex); const specialBaseAtk=(isPyrois(c)&&levelIndex===0&&c.unleveledPanel)?Number(c.unleveledPanel.baseAtkExtra||0):(c.baseAtkBonus||0)*baseRatio; return {hp:(c.hp||0)+(c.baseHPBonus||0)*baseRatio,atk:(c.atk||0)+specialBaseAtk,def:c.def||0};}
+function characterLabel(c){if(!c)return '未选择代理人'; const panel=characterPanelBase(c); const special=c.special?'（特殊异常→强攻）':''; const element=c.element?`｜${ELEMENT_LABELS[c.element]||c.element}属性`:''; return `${c.fullName||c.name}${special}${element}｜60级 / ${coreLevelLabel()} 面板 HP ${fmtNum(panel.hp,0)} / 攻击 ${fmtNum(panel.atk,0)} / 防御 ${fmtNum(panel.def,0)}`;}
+function fillCharacterControls({autoEngine=true}={}){const sel=$('#characterSelect'); if(!sel)return; const role=$('#roleSystem')?.value||'ATTACK'; const prev=currentCharacter(); const prevKey=prev?`${prev.name}|${prev.role}|${prev.special?'1':'0'}`:''; const options=CHARACTERS.map((c,i)=>({c,i})).filter(x=>x.c.role===role).sort((a,b)=>releaseOrderOfCharacter(b.c)-releaseOrderOfCharacter(a.c)||String(a.c.name).localeCompare(String(b.c.name),'zh-CN')); sel.innerHTML=options.map(x=>`<option value="${x.i}">${escapeHtml(characterDisplayName(x.c))}</option>`).join(''); const hit=options.find(x=>`${x.c.name}|${x.c.role}|${x.c.special?'1':'0'}`===prevKey)||options[0]; if(hit)sel.value=String(hit.i); syncCoreLevelToCharacter({force:true}); updateCharacterInfo(); if(autoEngine)syncWEngineToCharacter({force:true});}
+function onCharacterChanged(){syncCoreLevelToCharacter({force:true}); updateCharacterInfo(); syncWEngineToCharacter({force:true});}
+function updateCharacterInfo(){
+  const el=$('#characterInfo');
+  if(!el)return;
+  const c=currentCharacter();
+  const sel=$('#characterSelect');
+  if(sel)sel.classList.toggle('specialSelected',!!c?.special);
+  if(!c){el.textContent='当前职业暂无可选代理人。'; return;}
+  const levelIdx=selectedCoreLevelIndex();
+  const stats=characterStats(c,levelIdx);
+  const panel=characterPanelBase(c,levelIdx);
+  const roleText={ATTACK:'强攻',RUPTURE:'命破',ANOMALY:'异常',STUN:'击破',SUPPORT:'辅助'}[c.role]||c.role;
+  const identity=[c.rank?`${c.rank}级`:null,c.element?`${ELEMENT_LABELS[c.element]||c.element}·${roleText}`:roleText,c.faction||null].filter(Boolean).join('｜');
+  const totalCR=5+Number(stats.CRIT_RATE||0), totalCD=50+Number(stats.CRIT_DMG||0);
+  const totalAP=Number(stats.ANOMALY_PROFICIENCY||0);
+  const details=[`生命 ${fmtNum(panel.hp,0)}`,`攻击 ${fmtNum(panel.atk,0)}`,`防御 ${fmtNum(panel.def,0)}`];
+  if(c.impact)details.push(`冲击力 ${fmtNum(c.impact,0)}`);
+  details.push(`暴击率 ${fmtNum(totalCR,1)}%`,`暴击伤害 ${fmtNum(totalCD,1)}%`);
+  if(totalAP)details.push(`异常精通 ${fmtNum(totalAP,0)}`);
+  if(c.baseAnomalyMastery)details.push(`异常掌控 ${fmtNum(c.baseAnomalyMastery,0)}`);
+  if(c.baseEnergyRegen)details.push(`初始能量自动回复 ${fmtNum(c.baseEnergyRegen,2)}`);
+  const sheerText=c.role==='RUPTURE'?`<br>命破贯穿力换算：最终攻击×30% + 最终生命×${fmtNum(c.hpToSheerRatio||0,2)}${c.flatSheer?` + ${fmtNum(c.flatSheer,1)}`:''}`:'';
+  const specialText=c.special?`<br><span class="specialText">${escapeHtml(c.specialNote||'特殊代理人：按当前职业配装')}</span>`:'';
+  const panelNote=(isPyrois(c)&&levelIdx===0&&c.unleveledPanel?.note)?`<br><span class="fine">${escapeHtml(c.unleveledPanel.note)}</span>`:'';
+  const coreText=c.coreDetail?`<br><strong>3.0 机制录入：</strong>${escapeHtml(c.coreDetail)}`:'';
+  el.innerHTML=`<strong>${escapeHtml(c.fullName||c.name)}</strong>（${escapeHtml(identity)}）<br>60级 / ${escapeHtml(coreLevelLabel())}：${escapeHtml(details.join('；'))}<br>拆分计入项：${escapeHtml(statMapText(stats))}${panelNote}${sheerText}${coreText}${specialText}`;
+}
+function isAnomalyMode(mode){return ['ANOMALY_AP','ANOMALY_ATK','ANOMALY_WORDS'].includes(mode);}
+function toast(msg){const el=$('#toast'); el.textContent=msg; el.style.display='block'; clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.style.display='none',2400);}
+function num(id,fallback=0){const v=parseFloat($('#'+id).value); return Number.isFinite(v)?v:fallback;}
+function intNum(id,fallback=0){const v=parseInt($('#'+id).value,10); return Number.isFinite(v)?v:fallback;}
+function newId(){return `disc_${Date.now()}_${Math.random().toString(16).slice(2)}`;}
+function mainStatOf(d){if(d?.mainStat?.type)return d.mainStat; if(Array.isArray(d?.stats)&&d.stats.length&&d.stats[0]?.type)return d.stats[0]; return {type:'',value:0};}
+function subStatsOf(d){if(Array.isArray(d?.subStats)&&d.subStats.some(s=>s&&s.type))return d.subStats.filter(s=>s&&s.type).slice(0,4); if(Array.isArray(d?.stats)&&d.stats.length>1)return d.stats.slice(1,5).filter(s=>s&&s.type); return [];}
+function ensureCharacterBuilds(){
+  if(!Array.isArray(state.characterBuilds)) state.characterBuilds=[];
+  if(!Array.isArray(state.discClaims)) state.discClaims=[];
+}
+function buildId(){return `build_${Date.now()}_${Math.random().toString(16).slice(2)}`;}
+function makeUniqueBuildName(base, excludeId=''){
+  ensureCharacterBuilds();
+  let name=String(base||'套装').trim()||'套装';
+  const used=new Set(state.characterBuilds.filter(b=>String(b.id||'')!==String(excludeId||'')).map(b=>String(b.name||b.character||'').trim()));
+  if(!used.has(name))return name;
+  let i=2;
+  while(used.has(`${name}-${i}`))i++;
+  return `${name}-${i}`;
+}
+function buildsForCharacter(name){
+  ensureCharacterBuilds(); const key=normalizeReleaseName(name);
+  return state.characterBuilds.filter(b=>normalizeReleaseName(b.character)===key);
+}
+function buildByName(name){
+  ensureCharacterBuilds(); const key=String(name||'').trim();
+  return state.characterBuilds.find(b=>String(b.name||b.character||'').trim()===key)||null;
+}
+function buildById(id){ensureCharacterBuilds(); return state.characterBuilds.find(b=>String(b.id||'')===String(id||''))||null;}
+function nextBuildName(agent){
+  const base=String(agent||'代理人').trim()||'代理人';
+  const nums=buildsForCharacter(base).map(b=>{
+    const m=String(b.name||'').match(new RegExp('^'+base.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+'套装(\\d+)$'));
+    return m?Number(m[1]):0;
+  });
+  const n=Math.max(0,...nums)+1;
+  return `${base}套装${n}`;
+}
+function normalizeCharacterBuilds(){
+  ensureCharacterBuilds();
+  const now=new Date().toISOString();
+  const validIds=new Set((state.discs||[]).map(d=>String(d.id)).filter(Boolean));
+  const oldClaimByDisc=new Map((state.discClaims||[]).filter(c=>c&&c.discId).map(c=>[String(c.discId),c]));
+  const normalized=[];
+  const usedBuildIds=new Set();
+  const usedNames=new Set();
+  const charSeq={};
+  for(const raw of state.characterBuilds||[]){
+    const character=String(raw.character||'').trim();
+    if(!character)continue;
+    charSeq[normalizeReleaseName(character)]=(charSeq[normalizeReleaseName(character)]||0)+1;
+    let name=String(raw.name||'').trim();
+    if(!name)name=`${character}套装${charSeq[normalizeReleaseName(character)]}`;
+    let baseName=name, n=2;
+    while(usedNames.has(name)){name=`${baseName}-${n++}`;}
+    usedNames.add(name);
+    let id=String(raw.id||'').trim();
+    if(!id||usedBuildIds.has(id))id=buildId();
+    usedBuildIds.add(id);
+    const discIds=Array.from(new Set((raw.discIds||[]).map(String).filter(id=>id&&(!validIds.size||validIds.has(id)))));
+    if(!discIds.length)continue;
+    normalized.push({id,character,name,discIds,createdAt:raw.createdAt||raw.updatedAt||now,updatedAt:raw.updatedAt||raw.createdAt||now});
+  }
+  normalized.sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||String(a.name).localeCompare(String(b.name),'zh-CN'));
+  state.characterBuilds=normalized;
+  const buildByIdMap=new Map(state.characterBuilds.map(b=>[String(b.id),b]));
+  const buildByNameMap=new Map(state.characterBuilds.map(b=>[String(b.name),b]));
+  const claims=[];
+  const claimedIds=new Set();
+  for(const [discId,raw] of oldClaimByDisc.entries()){
+    if(validIds.size&&!validIds.has(discId))continue;
+    let b=raw.buildId?buildByIdMap.get(String(raw.buildId)):null;
+    if(!b && raw.buildName)b=buildByNameMap.get(String(raw.buildName));
+    const claim={discId,buildId:b?.id||String(raw.buildId||''),buildName:b?.name||String(raw.buildName||raw.character||'').trim(),character:b?.character||String(raw.character||'').trim(),createdAt:raw.createdAt||raw.updatedAt||now,updatedAt:raw.updatedAt||raw.createdAt||now};
+    if(!claim.buildName && claim.character)claim.buildName=claim.character;
+    if(claim.buildName||claim.character){claims.push(claim); claimedIds.add(discId);}
+  }
+  // Backward compatibility: older saves had builds but no explicit claims.
+  // Only do this once; afterwards a user may intentionally remove a disc's ownership while keeping saved builds unchanged.
+  if(!state.claimsInitialized){
+    for(const b of state.characterBuilds){
+      for(const id of b.discIds||[]){
+        const discId=String(id);
+        if(!discId||claimedIds.has(discId))continue;
+        claims.push({discId,buildId:b.id,buildName:b.name,character:b.character,createdAt:b.createdAt||now,updatedAt:b.updatedAt||now});
+        claimedIds.add(discId);
+      }
+    }
+    state.claimsInitialized=true;
+  }
+  claims.sort((a,b)=>String(a.createdAt).localeCompare(String(b.createdAt))||String(a.buildName).localeCompare(String(b.buildName),'zh-CN'));
+  state.discClaims=claims;
+  syncDiscEquippedByFromBuilds();
+}
+function claimForDisc(id){ensureCharacterBuilds(); const discId=String(id||''); return (state.discClaims||[]).find(c=>String(c.discId)===discId)||null;}
+function discOwnerNames(id){const c=claimForDisc(id); return c?[c.buildName||c.character].filter(Boolean):[];}
+function firstDiscOwner(id){const c=claimForDisc(id); return c?(c.buildName||c.character||''):'';}
+function firstDiscOwnerCharacter(id){const c=claimForDisc(id); return c?.character||'';}
+function syncDiscEquippedByFromBuilds(){
+  for(const d of state.discs||[]){ const c=claimForDisc(d.id); d.equippedBy=c?(c.buildName||c.character||''):''; }
+}
+function currentAgentName(){const c=currentCharacter(); return c?c.name:'';}
+function ownerWarningForDisc(d){
+  const current=currentAgentName();
+  const claim=claimForDisc(d?.id);
+  if(claim && current && normalizeReleaseName(claim.character)!==normalizeReleaseName(current)) return `这个驱动盘目前 ${claim.buildName||claim.character} 在使用`;
+  return '';
+}
+function priorityOwnerForDisc(id){return firstDiscOwner(id);}
+function discOccupiedByOther(id, agent){
+  const claim=claimForDisc(id);
+  if(!claim)return false;
+  return normalizeReleaseName(claim.character)!==normalizeReleaseName(agent||'');
+}
+function inventoryOwnerWarningForDisc(d, buildName){
+  if(!buildName)return '';
+  const b=buildByName(buildName);
+  const claim=claimForDisc(d?.id);
+  if(b && claim && normalizeReleaseName(claim.character)!==normalizeReleaseName(b.character)) return `这个驱动盘目前 ${claim.buildName||claim.character} 在使用`;
+  return '';
+}
+function ownerCellHtml(d, buildName=''){
+  const warning=inventoryOwnerWarningForDisc(d, buildName);
+  return `${ownerPillsHtml(d)}${warning?`<div class="ownerHint">${escapeHtml(warning)}</div>`:''}`;
+}
+function optimizerDiscsForPolicy(agent){
+  const policy=$('#occupiedPolicy')?.value||'ALL';
+  if(policy!=='AVOID_OCCUPIED')return state.discs||[];
+  return (state.discs||[]).filter(d=>!discOccupiedByOther(d.id, agent));
+}
+function occupiedPolicySummary(){
+  const policy=$('#occupiedPolicy')?.value||'ALL';
+  return policy==='AVOID_OCCUPIED'?'占用策略：避免使用已被其他代理人占用的驱动盘':'占用策略：使用所有驱动盘';
+}
+function characterBuildOptions(){ensureCharacterBuilds(); return state.characterBuilds.map(b=>b.name||b.character).filter(Boolean);}
+function refreshAgentFilterControls(){
+  const sel=$('#filterAgent'); if(!sel)return;
+  const prev=sel.value;
+  const options=characterBuildOptions();
+  sel.innerHTML='<option value="">全部</option>'+options.map(name=>`<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+  if(options.includes(prev)) sel.value=prev; else sel.value='';
+}
+function clearInventoryFilters(){
+  $('#filterSet').value=''; $('#filterText').value=''; $('#filterSlot').value=''; $('#filterStat').value=''; const a=$('#filterAgent'); if(a)a.value='';
+  renderInventory();
+  toast('库存筛选条件已清空');
+}
+function discStats(d){const out=[]; const main=mainStatOf(d); if(main.type)out.push(main); out.push(...subStatsOf(d)); return out;}
+async function fetchJSON(url,options={}){if(url.startsWith('/api/scan/'))options={...options,headers:{...(options.headers||{}),'X-ZZZ-Import-Token':SCAN_IMPORT_TOKEN}}; const res=await fetch(url,options); const text=await res.text(); let data=null; try{data=text?JSON.parse(text):null;}catch{data=text;} if(!res.ok)throw new Error(data&&data.error?data.error:`请求失败：${res.status}`); return data;}
+function updateStorageDisplay(data={}){
+  storagePath=data.storagePath||storagePath||'';
+  defaultStoragePath=data.defaultStoragePath||defaultStoragePath||'';
+  usingDefaultStoragePath=!!data.usingDefaultStoragePath;
+  const suffix=usingDefaultStoragePath?'（默认）':'（自定义）';
+  $('#storagePath').textContent=storagePath?(storagePath+' '+suffix):'-';
+}
+async function loadState(){const data=await fetchJSON('/api/state'); storagePath=data.storagePath||''; defaultStoragePath=data.defaultStoragePath||''; usingDefaultStoragePath=!!data.usingDefaultStoragePath; state={version:data.version||1,discs:data.discs||[],setEffects:data.setEffects||[],characterBuilds:data.characterBuilds||[],discClaims:data.discClaims||[],claimsInitialized:!!data.claimsInitialized}; normalizeCharacterBuilds(); updateStorageDisplay(data); $('#statusText').textContent='已加载';}
+async function changeStoragePath(){
+  const btn=$('#changeStorageBtn');
+  const oldText=btn?btn.textContent:'修改路径';
+  try{
+    if(btn){btn.disabled=true; btn.textContent='选择中...';}
+    $('#statusText').textContent='请选择库存保存文件夹...';
+    const data=await fetchJSON('/api/storage-folder',{method:'POST'});
+    if(data.cancelled){
+      $('#statusText').textContent='已取消修改路径';
+      toast('已取消修改路径');
+      return;
+    }
+    updateStorageDisplay(data);
+    $('#statusText').textContent='已切换存储路径';
+    toast('存储路径已更新');
+  }catch(err){
+    $('#statusText').textContent='修改路径失败';
+    alert('修改路径失败：'+err.message);
+  }finally{
+    if(btn){btn.disabled=false; btn.textContent=oldText;}
+  }
+}
+async function resetStoragePath(){
+  if(!confirm('恢复到软件默认存储位置？当前库存会保存到默认路径。'))return;
+  const data=await fetchJSON('/api/storage-path',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({reset:true})});
+  updateStorageDisplay(data);
+  $('#statusText').textContent='已恢复默认路径';
+  toast('已恢复默认存储位置');
+}
+async function saveState(){normalizeCharacterBuilds(); state.version=114; await fetchJSON('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)}); $('#statusText').textContent=`已保存：${new Date().toLocaleTimeString()}`;}
+function fillStatSelect(select,opts={}){const previous=select.value; select.innerHTML=''; if(opts.blank!==false){const blank=document.createElement('option'); blank.value=''; blank.textContent='不选择'; select.appendChild(blank);} for(const t of STAT_ORDER){const opt=document.createElement('option'); opt.value=t; opt.textContent=statLabel(t); select.appendChild(opt);} if(STAT_ORDER.includes(previous))select.value=previous;}
+function setupStatRows(){const box=$('#statsContainer'); box.innerHTML=''; for(let i=0;i<4;i++){const row=document.createElement('div'); row.className='statRow'; row.innerHTML='<select class="subStatType"></select><input class="subStatValue" type="number" step="0.1" placeholder="副词条数值" />'; box.appendChild(row); fillStatSelect(row.querySelector('select'),{blank:true});}}
+function fillMainStatSelect(selected='',opts={}){const slot=intNum('slot',1); const allowed=SLOT_MAIN_STAT_OPTIONS[slot]||[]; const select=$('#mainStatType'); select.innerHTML=''; const options=allowed.slice(); if(opts.blank){const blank=document.createElement('option'); blank.value=''; blank.textContent='请手动确认'; select.appendChild(blank);} if(selected&&!options.includes(selected))options.unshift(selected); for(const t of options){const opt=document.createElement('option'); opt.value=t; opt.textContent=statLabel(t)+(!allowed.includes(t)?'（不在当前槽位池，请确认）':''); select.appendChild(opt);} if(opts.blank&&!selected)select.value=''; else select.value=(selected&&options.includes(selected))?selected:(options[0]||''); if(!selected&&!opts.blank)applyMainStatDefault(true);}
+function expectedMainStatValue(type){return DEFAULT_MAIN_STAT_VALUES[type];}
+function isMainStatValueClose(value,expected){const v=Number(value), e=Number(expected); if(!Number.isFinite(v)||!Number.isFinite(e))return false; return Math.abs(v-e)<=Math.max(0.12,Math.abs(e)*0.015);}
+function validateMainStatFormValue(opts={}){const type=$('#mainStatType').value; const input=$('#mainStatValue'); const hint=$('#mainStatValueHint'); const expected=expectedMainStatValue(type); input?.classList?.remove('ocrDoubt'); $('#mainStatType')?.classList?.remove('ocrDoubt'); if(!type||!Number.isFinite(Number(expected))){if(hint)hint.textContent='会按 S 级 +15 固定数值校验。'; return true;} const suffix=PERCENT_STATS.has(type)?'%':''; if(hint)hint.textContent=`S级+15 ${statLabel(type)} 主属性固定值：${fmtNum(expected,2)}${suffix}`; const value=Number(input.value); if(!Number.isFinite(value))return false; if(isMainStatValueClose(value,expected)){if(Math.abs(value-expected)>1e-9)input.value=expected; return true;} input.classList.add('ocrDoubt'); $('#mainStatType').classList.add('ocrDoubt'); if(hint)hint.textContent=`当前值 ${fmtNum(value,2)}${suffix} 与 S级+15 固定值 ${fmtNum(expected,2)}${suffix} 不一致，保存时会自动修正。`; if(opts.correct){input.value=expected; input.classList.remove('ocrDoubt'); $('#mainStatType').classList.remove('ocrDoubt'); if(hint)hint.textContent=`已按 S级+15 修正为 ${fmtNum(expected,2)}${suffix}`; if(!opts.silent)toast(`主属性数值已按 S级+15 修正为 ${fmtNum(expected,2)}${suffix}`); return true;} return false;}
+function applyMainStatDefault(force=false){const type=$('#mainStatType').value; const input=$('#mainStatValue'); if(!type)return; const fallback=DEFAULT_MAIN_STAT_VALUES[type]; if(force||input.value==='')input.value=fallback??''; validateMainStatFormValue({silent:true});}
+function fillStaticControls(){for(let i=1;i<=6;i++){const opt=document.createElement('option'); opt.value=String(i); opt.textContent=`${i} 号位`; $('#filterSlot').appendChild(opt);} fillStatSelect($('#filterStat'),{blank:true}); setupStatRows(); fillMainStatSelect(); fillOptimizerMainLocks(); refreshModeOptions();}
+function fillOptimizerMainLocks(){for(const slot of [4,5,6]){const sel=$(`#lockSlot${slot}Main`); if(!sel)continue; const prev=sel.value; const allowed=SLOT_MAIN_STAT_OPTIONS[slot]||[]; sel.innerHTML='<option value="">不限制</option>'+allowed.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(statLabel(t))}</option>`).join(''); if(allowed.includes(prev))sel.value=prev; else sel.value='';}}
+function collectSlotAllowedMainStats(){const out={}; for(const slot of [4,5,6]){const v=$(`#lockSlot${slot}Main`)?.value||''; if(v)out[String(slot)]=[v];} return out;}
+function selectedMainLockSummary(){const parts=[]; for(const slot of [4,5,6]){const v=$(`#lockSlot${slot}Main`)?.value||''; if(v)parts.push(`${slot}号位：${statLabel(v)}`);} return parts.length?parts.join('；'):'4/5/6号位主属性不限制';}
+function activeTargetFieldsForRole(role){
+  role=String(role||'ATTACK').toUpperCase();
+  if(role==='RUPTURE')return new Set(['crit','critDmg','hp']);
+  if(role==='ANOMALY')return new Set(['atk','ap']);
+  if(role==='STUN'||role==='SUPPORT')return new Set(['crit','critDmg','atk','hp','ap']);
+  return new Set(['crit','critDmg','atk']);
+}
+function targetFieldValue(field){
+  const id={crit:'targetCritRate',critDmg:'targetCritDmg',atk:'targetFinalAttack',hp:'targetFinalHP',ap:'targetAnomalyProficiency'}[field];
+  return id?Number($('#'+id)?.value||0):0;
+}
+function enteredTargetCount(){
+  let count=0;
+  for(const field of ['crit','critDmg','atk','hp','ap']){
+    if(Math.abs(targetFieldValue(field))>1e-9)count++;
+  }
+  return count;
+}
+function maybeAutoStrictMode(){
+  const sel=$('#mode');
+  if(!sel)return;
+  if(!modeTouchedByUser && enteredTargetCount()>=2 && Array.from(sel.options).some(o=>o.value==='STRICT_TARGETS')){
+    sel.value='STRICT_TARGETS';
+  }
+  updateTargetFieldStyles();
+}
+function updateTargetFieldStyles(){
+  const role=$('#roleSystem')?.value||'ATTACK';
+  const activeDefaults=activeTargetFieldsForRole(role);
+  for(const label of $$('[data-target-field]')){
+    const field=label.dataset.targetField;
+    const hasValue=Math.abs(targetFieldValue(field))>1e-9;
+    const active=activeDefaults.has(field)||hasValue;
+    label.classList.toggle('targetInactive',!active);
+    label.classList.toggle('targetActive',active);
+  }
+}
+function refreshFloorControls(){
+  const role=$('#roleSystem')?.value||'ATTACK';
+  updateTargetFieldStyles();
+  const strategyTip=$('#strategyTip');
+  if(strategyTip){
+    if(role==='ATTACK')strategyTip.textContent='强攻默认启用暴击率、暴击伤害、攻击力；生命值和异常精通初始为灰色，需要时直接输入数值即可参与筛选。';
+    else if(role==='RUPTURE')strategyTip.textContent='命破默认启用暴击率、暴击伤害、生命值；攻击力和异常精通初始为灰色，需要时直接输入数值即可参与筛选。';
+    else if(role==='ANOMALY')strategyTip.textContent='异常默认启用攻击力和异常精通；暴击率、暴击伤害、生命值初始为灰色，需要时直接输入数值即可参与筛选。异常精通允许低于期望 10 点，超过期望不视为浪费。';
+    else strategyTip.textContent='辅助和击破默认五个期望属性全部可选；默认 0 表示不限制。暴击率按目标窗口判断，生命值和攻击力按目标附近优先，其他属性作为最低线。';
+  }
+}
+function refreshModeOptions(){
+  const role=$('#roleSystem').value||'ATTACK';
+  const modes=ROLE_MODES[role]||ROLE_MODES.ATTACK;
+  const prev=$('#mode').value;
+  $('#mode').innerHTML=modes.map(([value,label])=>`<option value="${escapeHtml(value)}">${escapeHtml(label)}</option>`).join('');
+  if(modes.some(([value])=>value===prev))$('#mode').value=prev;
+  if((role==='ATTACK'||role==='RUPTURE')&&$('#targetCritRate')&&$('#targetCritRate').value==='0')$('#targetCritRate').value='80';
+  if((role==='ANOMALY'||role==='STUN'||role==='SUPPORT')&&$('#targetCritRate')&&$('#targetCritRate').value==='80')$('#targetCritRate').value='0';
+  refreshFloorControls();
+  maybeAutoStrictMode();
+  fillCharacterControls();
+}
+function sortSetNames(names){return Array.from(names).sort((a,b)=>a.localeCompare(b,'zh-CN'));}
+function allSetNames(){const names=new Set(BUILTIN_SET_NAMES); for(const d of state.discs||[])if(d.setName)names.add(d.setName); return sortSetNames(names);}
+function inventorySetNames(){const names=new Set(); for(const d of state.discs||[])if(d&&String(d.setName||'').trim())names.add(String(d.setName).trim()); return sortSetNames(names);}
+function updateDriveSetInfo(){
+  const el=$('#driveSetInfo');
+  if(!el)return;
+  const names=[...new Set([$('#required4Set')?.value,$('#required2Set')?.value].filter(Boolean))];
+  const entries=names.filter(name=>DRIVE_SET_INFO[name]);
+  if(!entries.length){el.textContent='选择「呼啸沙龙」或「拂晓行纪」后，会在此显示 3.0 套装效果与本工具计算口径。'; return;}
+  el.innerHTML=entries.map(name=>{const info=DRIVE_SET_INFO[name]; return `<strong>${escapeHtml(name)}</strong><br>${escapeHtml(info.two)}<br>${escapeHtml(info.four)}<br><span class="fine">计算口径：${escapeHtml(info.model)}</span>`;}).join('<br><br>');
+}
+function refreshSetControls(selectedSet=''){
+  const names=allSetNames();
+  const currentForm=selectedSet||$('#setNameSelect').value;
+  $('#setNameSelect').innerHTML=names.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('')+'<option value="__CUSTOM__">其他 / 自定义</option>';
+  if(names.includes(currentForm))$('#setNameSelect').value=currentForm;
+  else if(currentForm&&currentForm!=='__CUSTOM__'){$('#setNameSelect').insertAdjacentHTML('afterbegin',`<option value="${escapeHtml(currentForm)}">${escapeHtml(currentForm)}</option>`); $('#setNameSelect').value=currentForm;}
+  const inventoryNames=inventorySetNames();
+  const currentFilter=$('#filterSet').value;
+  $('#filterSet').innerHTML='<option value="">全部</option>'+inventoryNames.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  $('#filterSet').value=inventoryNames.includes(currentFilter)?currentFilter:'';
+  const setOptions='<option value="">请选择套装</option>'+names.map(n=>`<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join('');
+  for(const id of ['required4Set','required2Set']){const el=$('#'+id); if(!el)continue; const prev=el.value; el.innerHTML=setOptions; if(names.includes(prev))el.value=prev;}
+  updateCustomSetVisibility();
+  updateDriveSetInfo();
+}
+function updateCustomSetVisibility(){const custom=$('#setNameSelect').value==='__CUSTOM__'; $('#customSetLabel').classList.toggle('hidden',!custom); if(custom)$('#customSetName').focus();}
+function selectedSetName(){return $('#setNameSelect').value==='__CUSTOM__'?$('#customSetName').value.trim():$('#setNameSelect').value.trim();}
+function mainStatFromForm(){const type=$('#mainStatType').value; let value=parseFloat($('#mainStatValue').value); if(!type){alert('请选择主属性'); return null;} if(!Number.isFinite(value)){alert('请填写主属性数值'); return null;} const expected=expectedMainStatValue(type); if(Number.isFinite(Number(expected))&&!isMainStatValueClose(value,expected)){alert(`当前默认按 S级+15 驱动盘保存：主属性「${statLabel(type)}」标准值应为 ${fmtNum(expected,2)}，已自动修正。`); value=expected; $('#mainStatValue').value=expected; $('#mainStatValue').classList.remove('ocrDoubt'); $('#mainStatType').classList.remove('ocrDoubt');} return {type,value};}
+function subStatsFromForm(mainType){const stats=[],seen=new Set(); for(const row of $$('#statsContainer .statRow')){const type=row.querySelector('.subStatType').value; const valueRaw=row.querySelector('.subStatValue').value; if(!type&&!valueRaw)continue; const value=parseFloat(valueRaw); if(!type||!Number.isFinite(value)){alert('每个副词条需要同时选择属性并填写数值'); return null;} if(type===mainType){alert('副词条不能与主属性相同'); return null;} if(seen.has(type)){alert('同一个驱动盘不能重复录入相同副词条'); return null;} seen.add(type); stats.push({type,value});} return stats;}
+
+function ocrStatListHtml(stats){const rows=(stats||[]).filter(s=>s&&(s.type||Number.isFinite(Number(s.value))||s.raw)); if(!rows.length)return '<span class="muted">未识别</span>'; return rows.map((s,i)=>{if(s.type){const cls=s.suspect?'pill warn':'pill'; const note=s.suspect?'（请确认）':''; return `<span class="${cls}">${escapeHtml(formatStatValue(s)+note)}</span>`;} const v=Number.isFinite(Number(s.value))?`，数值 ${escapeHtml(fmtNum(s.value,2))}`:''; const raw=s.raw?`，原文：${escapeHtml(s.raw)}`:''; return `<span class="pill warn">第 ${i+1} 条：属性未识别${v}${raw}</span>`;}).join('');}
+function renderOcrResult(data){const warnings=(data.warnings||[]).map(w=>`<div class="pill warn">${escapeHtml(w)}</div>`).join(''); const raw=escapeHtml(data.rawText||''); const fields=data.doubtfulFields||[]; const doubtHtml=fields.length?`<span class="pill bad">${fields.length} 处需要确认</span>`:''; const slotCls=fields.includes('slot')?'bad':'good'; const setCls=fields.includes('setName')?'warn':'good'; $('#ocrResult').innerHTML=`<strong>识别完成：${escapeHtml(data.engine||'OCR')}</strong><div style="margin-top:8px"><span class="pill ${setCls}">套装 ${escapeHtml(data.setName||'未识别')}</span><span class="pill ${slotCls}">槽位 ${escapeHtml(data.slot||'未识别')}</span><span class="pill">固定 S级 / +15</span>${doubtHtml}</div><div style="margin-top:8px">主属性：${ocrStatListHtml([data.mainStat])}</div><div style="margin-top:8px">副词条：${ocrStatListHtml(data.subStats)}</div>${warnings?`<div style="margin-top:8px">${warnings}</div>`:''}<details style="margin-top:8px"><summary class="fine">查看 OCR 原文</summary><pre class="ocrRaw">${raw}</pre></details><div class="fine" style="margin-top:8px">结果已填入下方表单；红框表示识别存疑，请确认后再保存。</div>`;}
+function clearOcrDoubtHighlights(){for(const el of $$('#discForm .ocrDoubt'))el.classList.remove('ocrDoubt'); for(const row of $$('#statsContainer .statRow.ocrDoubt'))row.classList.remove('ocrDoubt'); for(const row of $$('#statsContainer .statRow'))row.removeAttribute('title');}
+function markOcrDoubt(el){if(el)el.classList.add('ocrDoubt');}
+function applyOcrDoubtHighlights(data){clearOcrDoubtHighlights(); const fields=new Set(data?.doubtfulFields||[]); if(fields.has('setName')||!data?.setName)markOcrDoubt($('#setNameSelect')); if(fields.has('slot')||!data?.slot)markOcrDoubt($('#slot')); if(fields.has('mainStat')||!(data?.mainStat&&data.mainStat.type)){markOcrDoubt($('#mainStatType')); markOcrDoubt($('#mainStatValue'));} const rows=$$('#statsContainer .statRow'); const sub=data?.subStats||[]; for(let i=0;i<rows.length;i++){const st=sub[i]; if(fields.has(`subStats.${i}.type`)||fields.has(`subStats.${i}.value`)||fields.has(`subStat:${i}`)||(st&&st.suspect)||(st&&(!st.type||!Number.isFinite(Number(st.value))))){rows[i].classList.add('ocrDoubt'); if(fields.has(`subStats.${i}.type`)||fields.has(`subStat:${i}`)||(st&&(!st.type||st.suspect)))markOcrDoubt(rows[i].querySelector('.subStatType')); if(fields.has(`subStats.${i}.value`)||(st&&!Number.isFinite(Number(st.value))))markOcrDoubt(rows[i].querySelector('.subStatValue')); if(st&&st.raw)rows[i].title=st.raw;}}}
+function clearOCR(){lastOcrData=null; clearOcrDoubtHighlights(); $('#ocrImageFile').value=''; $('#ocrPreview').removeAttribute('src'); $('#ocrPreviewWrap').classList.add('hidden'); $('#ocrResult').textContent='还没有识别结果。';}
+function applyOcrToForm(data){if(!data)return; clearOcrDoubtHighlights(); editingId=null; $('#discId').value=''; if(data.setName)refreshSetControls(data.setName); if(data.slot)$('#slot').value=String(data.slot); $('#rarity').value='S'; $('#level').value='15'; const main=data.mainStat||{}; fillMainStatSelect(main.type||'',{blank:!main.type}); if(main.type)$('#mainStatType').value=main.type; if(main.type&&Number.isFinite(Number(main.value)))$('#mainStatValue').value=main.value; else if(!main.type)$('#mainStatValue').value=Number.isFinite(Number(main.value))?main.value:''; else applyMainStatDefault(true); validateMainStatFormValue({correct:true,silent:true}); setupStatRows(); const rows=$$('#statsContainer .statRow'); (data.subStats||[]).slice(0,4).forEach((s,i)=>{rows[i].querySelector('.subStatType').value=s.type||''; rows[i].querySelector('.subStatValue').value=Number.isFinite(Number(s.value))?s.value:'';}); applyOcrDoubtHighlights(data); $('#saveDiscBtn').textContent='保存识别结果';}
+function setOcrWorking(message){$('#ocrResult').innerHTML=`<span class="pill warn">${escapeHtml(message)}</span>`;}
+function loadBrowserTesseract(){if(window.Tesseract)return Promise.resolve(window.Tesseract); if(!browserTesseractPromise){browserTesseractPromise=new Promise((resolve,reject)=>{const script=document.createElement('script'); script.src=OCR_SCRIPT_URL; script.async=true; script.onload=()=>window.Tesseract?resolve(window.Tesseract):reject(new Error('浏览器 OCR 引擎加载失败')); script.onerror=()=>reject(new Error('浏览器 OCR 引擎加载失败，请检查网络是否可以访问 jsDelivr CDN')); document.head.appendChild(script);});} return browserTesseractPromise;}
+async function parseOcrRawText(rawText,engine){return await fetchJSON('/api/ocr/parse',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rawText,engine})});}
+function ocrQuality(data){if(!data)return 0; let score=0; if(data.setName)score+=1; if(data.slot)score+=1; if(data.mainStat&&data.mainStat.type)score+=4; score+=(data.subStats||[]).filter(s=>s&&s.type).length*2; return score;}
+function ocrNeedsBrowserFallback(data){const subs=data?.subStats||[]; const recognized=subs.filter(s=>s&&s.type).length; return !data || !(data.mainStat&&data.mainStat.type) || subs.length<4 || recognized<4;}
+async function recognizeOcrFileWithBrowser(file,reason){const reasonText=reason&&reason.message?reason.message:String(reason||'本机 OCR 结果不完整'); setOcrWorking('正在尝试浏览器 OCR；第一次加载可能较慢，需要联网加载识别引擎...'); const Tesseract=await loadBrowserTesseract(); const result=await Tesseract.recognize(file,'chi_sim+eng',{...OCR_WORKER_OPTIONS,logger:m=>{if(m&&m.status){const progress=Number.isFinite(m.progress)?` ${Math.round(m.progress*100)}%`:''; setOcrWorking(`浏览器 OCR：${m.status}${progress}`);}}}); const rawText=(result&&result.data&&result.data.text)||''; if(!rawText.trim())throw new Error('浏览器 OCR 未输出可用文字。'); const data=await parseOcrRawText(rawText,'浏览器 OCR / Tesseract.js'); data.warnings=[`已尝试浏览器 OCR。触发原因：${reasonText}`,...(data.warnings||[])]; return data;}
+async function enhanceWeakOcrWithBrowser(file,data){if(!ocrNeedsBrowserFallback(data))return data; try{const browserData=await recognizeOcrFileWithBrowser(file,new Error('本机 OCR 识别结果不完整，主属性或副词条缺失')); if(ocrQuality(browserData)>ocrQuality(data)){browserData.warnings=[`浏览器 OCR 结果比本机 OCR 更完整，已自动采用。`,...(browserData.warnings||[])]; return browserData;} data.warnings=[`本机 OCR 结果不完整；已尝试浏览器 OCR，但浏览器结果没有更完整，当前保留本机结果。`,...(data.warnings||[])]; return data;}catch(err){data.warnings=[`本机 OCR 结果不完整；浏览器 OCR 未成功：${err.message}`,...(data.warnings||[])]; return data;}}
+async function recognizeOcrFile(file){if(!file)return; if(file.type&&!file.type.startsWith('image/')){alert('请选择图片文件。'); return;} const url=URL.createObjectURL(file); $('#ocrPreview').src=url; $('#ocrPreviewWrap').classList.remove('hidden'); setOcrWorking('正在识别，请稍候...'); try{const fd=new FormData(); fd.append('image',file,file.name||'clipboard.png'); let data; try{data=await fetchJSON('/api/ocr',{method:'POST',body:fd}); data=await enhanceWeakOcrWithBrowser(file,data);}catch(serverErr){data=await recognizeOcrFileWithBrowser(file,serverErr);} lastOcrData=data; renderOcrResult(data); applyOcrToForm(data); toast('识别结果已填入表单，请确认后保存');}catch(err){$('#ocrResult').innerHTML=`<span class="pill bad">识别失败</span><div class="fine" style="margin-top:8px">${escapeHtml(err.message)}</div><div class="fine" style="margin-top:8px">可以先安装 Tesseract 中文 OCR，或保持联网后重试浏览器 OCR；也可以按识别预览手动录入。</div>`;}finally{setTimeout(()=>URL.revokeObjectURL(url),5000);}}
+function handlePasteImage(ev){const items=Array.from(ev.clipboardData?.items||[]); const item=items.find(x=>x.type&&x.type.startsWith('image/')); if(!item)return false; const file=item.getAsFile(); if(file){ev.preventDefault(); ev.stopPropagation(); recognizeOcrFile(file); return true;} return false;}
+function setupOcrEvents(){const zone=$('#ocrDropZone'); $('#ocrImageFile').addEventListener('change',ev=>{const file=ev.target.files&&ev.target.files[0]; if(file)recognizeOcrFile(file); ev.target.value='';}); $('#clearOcrBtn').addEventListener('click',clearOCR); zone.addEventListener('paste',handlePasteImage); for(const evName of ['dragenter','dragover'])zone.addEventListener(evName,ev=>{ev.preventDefault(); zone.classList.add('dragover');}); for(const evName of ['dragleave','drop'])zone.addEventListener(evName,()=>zone.classList.remove('dragover')); zone.addEventListener('drop',ev=>{ev.preventDefault(); const file=ev.dataTransfer?.files&&ev.dataTransfer.files[0]; if(file)recognizeOcrFile(file);}); document.addEventListener('paste',ev=>{const tag=(ev.target?.tagName||'').toUpperCase(); if(['INPUT','TEXTAREA','SELECT'].includes(tag))return; handlePasteImage(ev);});}
+function discFromForm(){const id=$('#discId').value||newId(); const setName=selectedSetName(); const slot=intNum('slot',1); const rarity='S'; const level=15; $('#rarity').value='S'; $('#level').value='15'; if(!setName){alert('请选择或填写套装名'); return null;} const mainStat=mainStatFromForm(); if(!mainStat)return null; const subStats=subStatsFromForm(mainStat.type); if(!subStats)return null; const existing=state.discs.find(d=>d.id===id); const now=new Date().toISOString(); const stats=[mainStat,...subStats]; return {id,setName,slot,rarity,level,stats,mainStat,subStats,locked:false,discarded:false,equippedBy:'',note:'',createdAt:existing?.createdAt||now,updatedAt:now};}
+async function saveDiscFromForm(ev){ev.preventDefault(); const disc=discFromForm(); if(!disc)return; const keepSet=disc.setName; const idx=state.discs.findIndex(d=>d.id===disc.id); if(idx>=0)state.discs[idx]=disc; else state.discs.push(disc); await saveState(); resetDiscForm(keepSet); renderAll(); refreshSetControls(keepSet); toast('驱动盘已保存');}
+function resetDiscForm(keepSetName=''){clearOcrDoubtHighlights(); const keep=keepSetName||selectedSetName(); editingId=null; $('#discId').value=''; $('#discForm').reset(); $('#rarity').value='S'; $('#level').value='15'; setupStatRows(); refreshSetControls(keep); fillMainStatSelect(); $('#saveDiscBtn').textContent='保存驱动盘';}
+function editDisc(id){clearOcrDoubtHighlights(); const d=state.discs.find(x=>x.id===id); if(!d)return; editingId=id; $('#discId').value=d.id; refreshSetControls(d.setName||''); $('#slot').value=String(d.slot||1); $('#rarity').value='S'; $('#level').value='15'; const main=mainStatOf(d); fillMainStatSelect(main.type||''); $('#mainStatValue').value=main.type?(main.value??''):(DEFAULT_MAIN_STAT_VALUES[$('#mainStatType').value]??''); validateMainStatFormValue({correct:true,silent:true}); setupStatRows(); const rows=$$('#statsContainer .statRow'); subStatsOf(d).slice(0,4).forEach((s,i)=>{rows[i].querySelector('.subStatType').value=s.type||''; rows[i].querySelector('.subStatValue').value=s.value??'';}); $('#saveDiscBtn').textContent='更新驱动盘'; location.hash='#input';}
+async function deleteDisc(id){const d=state.discs.find(x=>x.id===id); if(!d)return; if(!confirm(`确定删除 ${d.slot} 号位 ${d.setName} 吗？`))return; state.discs=state.discs.filter(x=>x.id!==id); ensureCharacterBuilds(); state.characterBuilds=state.characterBuilds.map(b=>({...b,discIds:(b.discIds||[]).filter(x=>String(x)!==String(id)),updatedAt:new Date().toISOString()})).filter(b=>(b.discIds||[]).length); state.discClaims=(state.discClaims||[]).filter(c=>String(c.discId)!==String(id)); await saveState(); renderAll(); toast('已删除');}
+async function removeDiscOwner(id){
+  const d=state.discs.find(x=>String(x.id)===String(id)); if(!d)return;
+  const claim=claimForDisc(id);
+  if(!claim){toast('该驱动盘当前无归属'); return;}
+  if(!confirm(`确定移除该驱动盘的归属「${claim.buildName||claim.character}」吗？
+
+该操作不会删除驱动盘，也不会删除已存套装记录，只会让这个驱动盘变为无归属状态。`))return;
+  ensureCharacterBuilds();
+  state.discClaims=(state.discClaims||[]).filter(c=>String(c.discId)!==String(id));
+  d.equippedBy='';
+  await saveState();
+  renderAll();
+  if(lastResults)renderResults(lastResults);
+  toast('已移除归属');
+}
+async function duplicateDisc(id){const d=state.discs.find(x=>x.id===id); if(!d)return; const copy=JSON.parse(JSON.stringify(d)); copy.id=newId(); copy.equippedBy=''; copy.createdAt=copy.updatedAt=new Date().toISOString(); state.discs.push(copy); await saveState(); renderAll(); toast('已复制一份');}
+function discMatchesFilters(d){
+  const q=$('#filterText').value.trim().toLowerCase(), slot=$('#filterSlot').value, set=$('#filterSet').value, stat=$('#filterStat').value, buildName=$('#filterAgent')?.value||'', stats=discStats(d);
+  if(slot&&String(d.slot)!==slot)return false;
+  if(set&&String(d.setName||'').trim()!==set)return false;
+  if(stat&&!stats.some(s=>s.type===stat))return false;
+  if(buildName){const build=buildByName(buildName); if(!build || !(build.discIds||[]).map(String).includes(String(d.id)))return false;}
+  if(q){const owners=discOwnerNames(d.id); const buildNames=state.characterBuilds.filter(b=>(b.discIds||[]).map(String).includes(String(d.id))).map(b=>b.name||b.character); const blob=[d.setName,...owners,...buildNames,...stats.map(s=>statLabel(s.type))].join(' ').toLowerCase(); if(!blob.includes(q))return false;}
+  return true;
+}
+function ownerPillsHtml(d){const claim=claimForDisc(d.id); if(!claim)return '<span class="muted">-</span>'; return `<span class="pill assignedPill">${escapeHtml(claim.buildName||claim.character)}</span>`;}
+function renderInventory(){
+  refreshAgentFilterControls();
+  const selectedBuildName=$('#filterAgent')?.value||'';
+  const discs=(state.discs||[]).filter(discMatchesFilters).sort((a,b)=>(a.slot-b.slot)||String(a.setName).localeCompare(String(b.setName),'zh-CN')||(b.level-a.level));
+  const build=selectedBuildName?buildByName(selectedBuildName):null;
+  const buildText=build?`；已存套装「${build.name}」显示 ${discs.length}/${(build.discIds||[]).length} 个驱动盘`:'';
+  $('#inventorySummary').textContent=`显示 ${discs.length} / ${state.discs.length} 个${buildText}`;
+  const rows=discs.map(d=>{
+    const main=mainStatOf(d);
+    const subHtml=subStatsOf(d).map(s=>`<span class="pill">${escapeHtml(formatStatValue(s))}</span>`).join('')||'<span class="muted">无</span>';
+    const hasOwner=!!claimForDisc(d.id);
+    return `<tr><td>${d.slot}</td><td>${escapeHtml(d.setName)}</td><td><span class="pill good">${escapeHtml(formatStatValue(main))}</span></td><td>${subHtml}</td><td>${ownerCellHtml(d,selectedBuildName)}</td><td>S / +15</td><td><div class="actions"><button class="small" data-action="edit" data-id="${escapeHtml(d.id)}">编辑</button><button class="small" data-action="copy" data-id="${escapeHtml(d.id)}">复制</button><button class="small" data-action="removeOwner" data-id="${escapeHtml(d.id)}" ${hasOwner?'':'disabled'}>移除</button><button class="small danger" data-action="delete" data-id="${escapeHtml(d.id)}">删除</button></div></td></tr>`;
+  }).join('');
+  $('#inventoryBody').innerHTML=rows||'<tr><td colspan="7" class="muted">暂无符合条件的驱动盘。可以清空选择条件，或先在上方录入。</td></tr>';
+}
+async function runOptimize(){
+  if((state.discs||[]).length<6){alert('库存至少需要每个槽位都有一个驱动盘。'); return;}
+  const required4Set=$('#required4Set').value.trim();
+  const required2Set=$('#required2Set').value.trim();
+  if(!required4Set||!required2Set){alert('请先选择 4 件套套装和 2 件套套装。'); return;}
+  if(required4Set===required2Set){alert('4 件套和 2 件套不能选择同一个套装。'); return;}
+  const btn=$('#runOptimizeBtn');
+  const cancelBtn=$('#cancelOptimizeBtn');
+  const runToken=++optimizeRunToken;
+  btn.disabled=true; btn.textContent='计算中...';
+  cancelBtn.disabled=false; cancelBtn.textContent='强制终止';
+  $('#resultsSummary').textContent='正在计算，请稍候。'; $('#resultsContainer').innerHTML='';
+  try{
+    await saveState();
+    const role=$('#roleSystem').value||'ATTACK';
+    const mode=$('#mode').value;
+    const targetCritRate=num('targetCritRate',0);
+    const targetCritDmg=num('targetCritDmg',0);
+    const targetFinalAttack=num('targetFinalAttack',0);
+    const targetFinalHp=num('targetFinalHP',0);
+    const targetAnomalyProficiency=num('targetAnomalyProficiency',0);
+    const wantedWeights=role==='ANOMALY'?{ANOMALY_PROFICIENCY:1,ATK_PERCENT:1}:role==='RUPTURE'?{CRIT_RATE:1,CRIT_DMG:1,HP_PERCENT:1,HP_FLAT:0.35,ATK_PERCENT:0.35,ATK_FLAT:0.15}:role==='STUN'?{IMPACT:1,ENERGY_REGEN:0.7,CRIT_RATE:0.65,CRIT_DMG:0.45,ATK_PERCENT:0.75,HP_PERCENT:0.45,ATK_FLAT:0.2,HP_FLAT:0.15,ANOMALY_PROFICIENCY:0.25}:role==='SUPPORT'?{ENERGY_REGEN:1,ATK_PERCENT:0.9,HP_PERCENT:0.7,CRIT_RATE:0.55,CRIT_DMG:0.45,ANOMALY_PROFICIENCY:0.45,ATK_FLAT:0.2,HP_FLAT:0.15}:{CRIT_RATE:1,CRIT_DMG:1,ATK_PERCENT:1,ATK_FLAT:0.35};
+    if(targetCritRate>0)wantedWeights.CRIT_RATE=Math.max(wantedWeights.CRIT_RATE||0,1);
+    if(targetCritDmg>0)wantedWeights.CRIT_DMG=Math.max(wantedWeights.CRIT_DMG||0,1);
+    if(targetFinalAttack>0){wantedWeights.ATK_PERCENT=Math.max(wantedWeights.ATK_PERCENT||0,1); wantedWeights.ATK_FLAT=Math.max(wantedWeights.ATK_FLAT||0,0.25);}
+    if(targetFinalHp>0){wantedWeights.HP_PERCENT=Math.max(wantedWeights.HP_PERCENT||0,1); wantedWeights.HP_FLAT=Math.max(wantedWeights.HP_FLAT||0,0.25);}
+    if(targetAnomalyProficiency>0)wantedWeights.ANOMALY_PROFICIENCY=Math.max(wantedWeights.ANOMALY_PROFICIENCY||0,1);
+    const slotAllowedMainStats=collectSlotAllowedMainStats();
+    const engine=currentWEngine();
+    const rank=selectedWEngineRank();
+    const character=currentCharacter();
+    const coreLevel=selectedCoreLevelIndex();
+    if(!character){alert('请先选择角色。'); return;}
+    if(character.name==='维琳娜')wantedWeights.ENERGY_REGEN=Math.max(wantedWeights.ENERGY_REGEN||0,0.9);
+    const optimizeDiscs=optimizerDiscsForPolicy(character.name);
+    if(($('#occupiedPolicy')?.value||'ALL')==='AVOID_OCCUPIED' && optimizeDiscs.length<6){
+      $('#resultsSummary').textContent=`当前占用策略过滤后仅剩 ${optimizeDiscs.length} 个驱动盘，可能无法组成 6 个槽位；如果想允许共用，请改为“使用所有的驱动盘”。`;
+    }
+    const extraStats={}; addToStats(extraStats,characterStats(character,coreLevel)); addToStats(extraStats,wEnginePanelStats(engine));
+    const combatExtraStats={}; addToStats(combatExtraStats,wEngineCombatStats(engine,rank));
+    const req={
+      discs:optimizeDiscs,setEffects:[],baseCritRate:5,baseCritDmg:50,
+      baseHP:character.hp||0,baseATK:character.atk||0,baseDEF:character.def||0,baseAnomalyMastery:character.baseAnomalyMastery||0,baseEnergyRegen:character.baseEnergyRegen||0,hpToSheerRatio:role==='RUPTURE'?(character.hpToSheerRatio||0.1):0,
+      roleSystem:role,characterName:character.fullName||character.name,characterElement:character.element||'',
+      extraCritRate:0,extraCritDmg:0,extraStats,combatExtraStats,
+      targetCritRate,targetCritDmg,targetAnomalyProficiency,targetFinalHp,targetFinalAttack,
+      mode,wantedWeights,
+      minPanelCritDmg:0,
+      minFinalAttack:0,
+      minSheerForce:0,
+      topN:20,topKPerSlot:5000,maxCombinations:50000000,excludeDiscarded:false,
+      slotAllowedMainStats,setPattern:'4+2',required4Set,required2Set,wordCoef:1,overflowPenalty:0.001,
+      wEngineName:engine?wEngineLabel(engine):'',wEngineRank:engine?rank:0
+    };
+    const resp=await fetchJSON('/api/optimize',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(req)});
+    if(runToken!==optimizeRunToken)return;
+    lastResults=resp; lastOptimizeMode=mode; lastOptimizeRole=role; renderResults(resp); location.hash='#results';
+  }catch(err){
+    if(runToken===optimizeRunToken)$('#resultsSummary').textContent='计算失败：'+err.message;
+  }finally{
+    if(runToken===optimizeRunToken){
+      btn.disabled=false; btn.textContent='开始配装';
+      cancelBtn.disabled=true; cancelBtn.textContent='强制终止';
+    }
+  }
+}
+function setSummaryHtml(summary){return Object.entries(summary||{}).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'zh-CN')).map(([name,count])=>`<span class="pill">${escapeHtml(name)} × ${count}</span>`).join('')||'<span class="muted">-</span>';}
+function resultStatsHtml(res){
+  const important=['CRIT_RATE','CRIT_DMG','ATK_PERCENT','HP_PERCENT','ANOMALY_PROFICIENCY','ATK_FLAT','HP_FLAT','PEN_RATIO','PEN_FLAT','DEF_PERCENT','DEF_FLAT','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','ELEMENT_DMG','SHEER_DMG_BONUS','INITIAL_ENERGY_REGEN','ANOMALY_MASTERY_FLAT','FINAL_ANOMALY_MASTERY','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE'];
+  const parts=[];
+  for(const stat of important){
+    const panel=res.stats?.[stat]||0;
+    const combat=res.combatStats?.[stat]||0;
+    if(panel)parts.push(`<span class="pill">${statLabel(stat)} ${fmtNum(panel,2)}${PERCENT_STATS.has(stat)?'%':''}</span>`);
+    else if(combat)parts.push(`<span class="pill">实战${statLabel(stat)} ${fmtNum(combat,2)}${PERCENT_STATS.has(stat)?'%':''}</span>`);
+  }
+  return parts.join('')||'<span class="muted">-</span>';
+}
+function resultMetricsHtml(res){
+  const finalAtk=res.finalAttack??res.finalATK??0;
+  const combatAtk=res.combatFinalAttack??finalAtk;
+  const finalHp=res.finalHp??res.finalHP??0;
+  const panelCR=res.panelCritRate??res.critRate??0;
+  const panelCD=res.panelCritDmg??res.critDmg??0;
+  const combatCR=res.critRate??panelCR;
+  const combatCD=res.critDmg??panelCD;
+  const shortfall=Number(res.critShortfall||0), overflow=Number(res.critOverflow||0);
+  const critFitPill=shortfall>0.05?`<span class="pill warn">低目标 ${fmtNum(shortfall,2)}%</span>`:(overflow>0.05?`<span class="pill warn">溢出 ${fmtNum(overflow,2)}%</span>`:'');
+  const combatCritPill=(Math.abs(combatCR-panelCR)>0.05||Math.abs(combatCD-panelCD)>0.05)?`<span class="pill good">实战参考 ${fmtNum(combatCR,2)}% / ${fmtNum(combatCD,2)}%</span>`:'';
+  const combatAtkPill=Math.abs(combatAtk-finalAtk)>0.5?`<span class="pill good">实战攻击 ${fmtNum(combatAtk,0)}</span>`:'';
+  if(isAnomalyMode(lastOptimizeMode)){
+    const st=res.combatStats||res.stats||{};
+    const ap=st.ANOMALY_PROFICIENCY||0, atkPercent=st.ATK_PERCENT||0;
+    const velinaPills=res.initialEnergyRegen?`<span class="pill good">初始回能 ${fmtNum(res.initialEnergyRegen,2)}</span><span class="pill good">实战异常掌控 ${fmtNum(res.finalAnomalyMastery||0,1)}</span><span class="pill good">核心增伤 ${fmtNum(st.VELINA_CORE_DMG_BONUS||0,1)}%</span>`:'';
+    return `<span class="pill good">异常精通 ${fmtNum(ap,2)}</span><span class="pill good">攻击力% ${fmtNum(atkPercent,2)}%</span>${velinaPills}${combatAtkPill}<span class="pill warn">异常有效词条 ${fmtNum(res.weightedWords,2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
+  }
+  if(lastOptimizeRole==='RUPTURE'){
+    return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill good">面板暴伤 ${fmtNum(panelCD,2)}%</span>${combatCritPill}<span class="pill warn">贯穿力 ${fmtNum(res.sheerForce,0)}</span><span class="pill">生命 ${fmtNum(finalHp,0)}</span><span class="pill">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">总词条 ${fmtNum(res.weightedWords,2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
+  }
+  if(lastOptimizeRole==='STUN'||lastOptimizeRole==='SUPPORT'){
+    return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill warn">生命 ${fmtNum(finalHp,0)}</span><span class="pill warn">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">面板暴伤 ${fmtNum(panelCD,2)}%</span><span class="pill">总词条 ${fmtNum(res.weightedWords,2)}</span><span class="pill">评分 ${fmtNum(res.score,0)}</span>`;
+  }
+  return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill good">面板暴伤 ${fmtNum(panelCD,2)}%</span>${combatCritPill}<span class="pill warn">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">总词条 ${fmtNum(res.weightedWords,2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
+}
+function discBoxHtml(d){
+  const main=mainStatOf(d), subs=subStatsOf(d).map(s=>formatStatValue(s)).join(' / ')||'无';
+  const owner=ownerWarningForDisc(d);
+  const claim=claimForDisc(d?.id);
+  const current=currentAgentName();
+  const showClaimBtn=owner&&claim&&current&&normalizeReleaseName(claim.character)!==normalizeReleaseName(current);
+  return `<div class="discBox"><div class="main">${d.slot} 号位 · ${escapeHtml(d.setName)}</div><div class="subs">主属性：${escapeHtml(formatStatValue(main))}</div><div class="subs">副词条：${escapeHtml(subs)}</div>${owner?`<div class="ownerHint">${escapeHtml(owner)}</div>`:''}${showClaimBtn?`<div class="row" style="margin-top:8px"><button type="button" class="small" data-claim-disc="${escapeHtml(d.id)}">占用</button><span class="fine">将归属改为当前代理人的已存套装。</span></div>`:''}</div>`;
+}
+function floorSummary(){
+  const parts=[];
+  const cr=num('targetCritRate',0), cd=num('targetCritDmg',0), atk=num('targetFinalAttack',0), hp=num('targetFinalHP',0), ap=num('targetAnomalyProficiency',0);
+  const strict=$('#mode')?.value==='STRICT_TARGETS';
+  parts.push(`暴击率 ${cr>0?fmtNum(cr,1)+'%'+(strict?'（严格贴近）':'（±1词条）'):'不限制'}`);
+  parts.push(`暴击伤害 ${cd>0?fmtNum(cd,1)+'%'+(strict?'（严格贴近）':''):'不限制'}`);
+  parts.push(`攻击力 ${atk>0?fmtNum(atk,0)+(strict?'（严格贴近）':''):'不限制'}`);
+  parts.push(`生命值 ${hp>0?fmtNum(hp,0)+(strict?'（严格贴近）':''):'不限制'}`);
+  parts.push(`异常精通 ${ap>0?fmtNum(ap,0)+(strict?'（严格贴近）':'（允许低10）'):'不限制'}`);
+  return '属性设定：'+parts.join('；')+(strict?'；当前策略：遵守严格指标。':'');
+}
+function renderResults(resp){
+  const counts=resp.candidateCounts||{};
+  const countText=[1,2,3,4,5,6].map(slot=>`${slot}号:${counts[String(slot)]??0}`).join('，');
+  const setPlan=`4件套：${$('#required4Set').value||'-'}；2件套：${$('#required2Set').value||'-'}`;
+  const mainLockPlan=`主属性限制：${selectedMainLockSummary()}`;
+  const floorPlan=floorSummary();
+  const occupyPlan=occupiedPolicySummary();
+  const charPlan=`代理人：${characterLabel(currentCharacter())}`;
+  const wEnginePlan=`音擎：${selectedWEngineSummary()}`;
+  $('#resultsSummary').innerHTML=`<strong>${escapeHtml(resp.message||'完成')}</strong><br>${escapeHtml(setPlan)}<br>${escapeHtml(mainLockPlan)}<br>${escapeHtml(floorPlan)}<br>${escapeHtml(occupyPlan)}<br>${escapeHtml(charPlan)}<br>${escapeHtml(wEnginePlan)}<br>候选数：${escapeHtml(countText)}；实际搜索组合：${escapeHtml(resp.searchedCombinations||0)}。<br>v1.14 计算口径：角色60级成长、所选核心技/面板状态、音擎基础与高级属性、驱动盘主副属性和2件套静态效果计入角色详情面板；4件套和音擎技能类效果统一作为实战参考。敌人抗性无视、队伍条件、专属技能倍率不直接写入通用期望指数。`;
+  if(!resp.results||!resp.results.length){
+    const misses=resp.nearMisses||[];
+    let html='<div class="notice">没有达标结果。请检查所选 4 件套 / 2 件套在每个槽位是否有库存，或 4/5/6 号位主属性限制、期望属性是否过严；也可以把暂不需要的期望属性改回 0。普通策略下暴击率使用 ±1 个词条窗口；异常精通允许低 10 点；严格指标策略会显示最接近目标的方案。</div>';
+    if(misses.length){
+      html+='<div class="notice" style="margin-top:10px">下面显示接近条件的候选方案，用于排查未达标项；它们不会当作正式结果。</div>';
+      html+=misses.map(res=>`<div class="resultCard nearMiss"><div class="resultHead"><div class="rank">接近 #${res.rank}</div><div class="row">${resultMetricsHtml(res)}</div></div><div class="fine" style="margin-top:8px">${escapeHtml(res.reason||'')}</div><div style="margin-top:8px">${setSummaryHtml(res.setSummary)}</div><div style="margin-top:8px">${resultStatsHtml(res)}</div><div class="discGrid">${(res.discs||[]).map(discBoxHtml).join('')}</div></div>`).join('');
+    }
+    $('#resultsContainer').innerHTML=html;
+    return;
+  }
+  $('#resultsContainer').innerHTML=resp.results.map(res=>`<div class="resultCard"><div class="resultHead"><div class="rank">#${res.rank}</div><div class="row">${resultMetricsHtml(res)}</div></div><div class="fine" style="margin-top:8px">${escapeHtml(res.reason||'')}</div><div style="margin-top:8px">${setSummaryHtml(res.setSummary)}</div><div style="margin-top:8px">${resultStatsHtml(res)}</div><div class="buildActions"><button type="button" class="small success" data-store-build="${res.rank-1}">存入角色</button><span class="fine">把这 6 个驱动盘保存为当前代理人的一套配置；可在弹窗中重命名。</span></div><div class="discGrid">${(res.discs||[]).map(discBoxHtml).join('')}</div></div>`).join('');
+}
+function defaultStoreBuildName(agent){return lastClaimBuildNameByAgent[agent]||nextBuildName(agent);}
+function applyClaim(discId, build, {force=false}={}){
+  ensureCharacterBuilds();
+  const now=new Date().toISOString();
+  const idx=(state.discClaims||[]).findIndex(c=>String(c.discId)===String(discId));
+  const existing=idx>=0?state.discClaims[idx]:null;
+  if(existing && !force)return false;
+  const claim={discId:String(discId),buildId:build.id,buildName:build.name,character:build.character,createdAt:existing?.createdAt||now,updatedAt:now};
+  if(idx>=0)state.discClaims[idx]=claim; else state.discClaims.push(claim);
+  return true;
+}
+function updateClaimsForBuildRename(build){
+  for(const c of state.discClaims||[]){
+    if(String(c.buildId)===String(build.id)){c.buildName=build.name; c.character=build.character; c.updatedAt=new Date().toISOString();}
+  }
+}
+async function claimDiscForCurrentAgent(discId){
+  const c=currentCharacter();
+  if(!c){alert('请先选择代理人。'); return;}
+  const disc=state.discs.find(d=>String(d.id)===String(discId));
+  if(!disc){alert('找不到这个驱动盘。'); return;}
+  const old=claimForDisc(discId);
+  if(old && normalizeReleaseName(old.character)===normalizeReleaseName(c.name)){toast('该驱动盘已经属于当前代理人的套装'); return;}
+  const defaultName=defaultStoreBuildName(c.name);
+  const name=(prompt(`将 ${disc.slot} 号位「${disc.setName}」的归属改为当前代理人。\n请输入归属套装名称：`, defaultName)||'').trim();
+  if(!name)return;
+  ensureCharacterBuilds();
+  const now=new Date().toISOString();
+  let build=buildByName(name);
+  if(build && normalizeReleaseName(build.character)!==normalizeReleaseName(c.name)){
+    alert('这个套装名称已经被其他代理人使用，请换一个名称。'); return;
+  }
+  if(!build){
+    build={id:buildId(),character:c.name,name:makeUniqueBuildName(name),discIds:[],createdAt:now,updatedAt:now};
+    state.characterBuilds.push(build);
+  }
+  if(!(build.discIds||[]).map(String).includes(String(discId)))build.discIds=[...(build.discIds||[]),String(discId)];
+  build.updatedAt=now;
+  lastClaimBuildNameByAgent[c.name]=build.name;
+  applyClaim(discId,build,{force:true});
+  normalizeCharacterBuilds();
+  await saveState();
+  renderAll();
+  if(lastResults)renderResults(lastResults);
+  toast(`已占用到 ${build.name}`);
+}
+async function storeResultBuild(index){
+  const c=currentCharacter();
+  if(!c){alert('请先选择代理人。'); return;}
+  const result=lastResults?.results?.[index];
+  if(!result || !Array.isArray(result.discs) || result.discs.length!==6){alert('无法读取该配装结果。'); return;}
+  const discIds=result.discs.map(d=>d.id).filter(Boolean);
+  if(discIds.length!==6){alert('该结果缺少驱动盘 ID，无法存入代理人。'); return;}
+  const agent=c.name;
+  const defaultName=defaultStoreBuildName(agent);
+  const nameInput=(prompt('请输入这套配装的名称：', defaultName)||'').trim();
+  if(!nameInput)return;
+  ensureCharacterBuilds();
+  const now=new Date().toISOString();
+  let build=buildByName(nameInput);
+  if(build && normalizeReleaseName(build.character)!==normalizeReleaseName(agent)){
+    alert('这个套装名称已经被其他代理人使用，请换一个名称。'); return;
+  }
+  if(!build){
+    build={id:buildId(),character:agent,name:makeUniqueBuildName(nameInput),discIds:[],createdAt:now,updatedAt:now};
+    state.characterBuilds.push(build);
+  }else{
+    build.name=makeUniqueBuildName(nameInput,build.id);
+    build.character=agent;
+  }
+  build.discIds=discIds;
+  build.updatedAt=now;
+  lastClaimBuildNameByAgent[agent]=build.name;
+  updateClaimsForBuildRename(build);
+  const conflicts=[];
+  for(const d of result.discs){
+    const claim=claimForDisc(d.id);
+    if(claim && normalizeReleaseName(claim.character)!==normalizeReleaseName(agent)){
+      conflicts.push(`${d.slot}号位：${claim.buildName||claim.character}`);
+      continue;
+    }
+    if(!claim)applyClaim(d.id,build,{force:false});
+  }
+  normalizeCharacterBuilds();
+  await saveState();
+  renderAll();
+  if(lastResults)renderResults(lastResults);
+  toast(`已存入 ${build.name}`);
+  if(conflicts.length){
+    alert(`已保存「${build.name}」。\n\n以下驱动盘已有其他套装归属，本次不会覆盖；如需转移归属，请在结果卡对应驱动盘点击“占用”：\n${conflicts.join('\n')}`);
+  }
+}
+function updateCounts(){$('#discCountPill').textContent=`${state.discs.length} 个驱动盘`;}
+function renderAll(){refreshSetControls(); refreshAgentFilterControls(); renderInventory(); updateCounts();}
+function exportState(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`zzz-drive-builder-state-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);}
+function exportResults(){if(!lastResults){alert('还没有可导出的结果。'); return;} const blob=new Blob([JSON.stringify(lastResults,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`zzz-drive-builder-results-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);}
+async function cancelOptimize(){const btn=$('#cancelOptimizeBtn'); btn.disabled=true; btn.textContent='正在终止...'; try{const resp=await fetchJSON('/api/optimize/cancel',{method:'POST'}); const msg=resp?.message||'已发送强制终止指令。'; $('#resultsSummary').textContent=msg; toast(msg);}catch(err){$('#resultsSummary').textContent='终止失败：'+err.message; toast('终止失败：'+err.message);}finally{btn.textContent='强制终止';}}
+function resetOptimizerOptions(){
+  $('#required4Set').value='';
+  $('#required2Set').value='';
+  for(const slot of [4,5,6]){const el=$(`#lockSlot${slot}Main`); if(el)el.value='';}
+  $('#wEngineSelect').value='';
+  $('#wEngineRank').value='1';
+  updateWEngineInfo();
+  $('#roleSystem').value='ATTACK';
+  refreshModeOptions();
+  const charSel=$('#characterSelect');
+  if(charSel&&charSel.options.length)charSel.selectedIndex=0;
+  modeTouchedByUser=false;
+  const attackModes=ROLE_MODES.ATTACK||[];
+  if(attackModes.length)$('#mode').value=attackModes[0][0];
+  $('#targetCritRate').value='80';
+  $('#targetCritDmg').value='0';
+  $('#targetFinalAttack').value='0';
+  $('#targetFinalHP').value='0';
+  $('#targetAnomalyProficiency').value='0';
+  const occupiedPolicy=$('#occupiedPolicy'); if(occupiedPolicy)occupiedPolicy.value='ALL';
+  refreshFloorControls();
+  onCharacterChanged();
+  lastOptimizeMode='MAX_CD';
+  lastOptimizeRole='ATTACK';
+}
+async function clearResults(){
+  optimizeRunToken++;
+  const cancelBtn=$('#cancelOptimizeBtn');
+  const runBtn=$('#runOptimizeBtn');
+  const wasRunning=cancelBtn&&!cancelBtn.disabled;
+  if(wasRunning){try{await fetchJSON('/api/optimize/cancel',{method:'POST'});}catch{}}
+  if(runBtn){runBtn.disabled=false; runBtn.textContent='开始配装';}
+  if(cancelBtn){cancelBtn.disabled=true; cancelBtn.textContent='强制终止';}
+  lastResults=null;
+  resetOptimizerOptions();
+  $('#resultsSummary').textContent='结果已清空，配装选项已重置。';
+  $('#resultsContainer').innerHTML='';
+  toast('配装结果和配装选项已清空');
+}
+function resetScanImport(message='尚未选择扫描结果。'){
+  pendingScanExport=null; pendingScanPreview=null;
+  const button=$('#applyScanImportBtn'); button.disabled=true;
+  $('#scanImportPreview').textContent=message;
+}
+function renderScanImportPreview(preview){
+  const details=(preview.changes||[]).filter(x=>x.action!=='unchanged').slice(0,20).map(x=>`<span class="pill ${x.action==='add'?'good':'warn'}">${x.action==='add'?'新增':'更新'} ${escapeHtml(x.setName)} ${x.slot}号位</span>`).join('');
+  const more=(preview.added+preview.updated)>20?`<div class="fine" style="margin-top:8px">另有 ${preview.added+preview.updated-20} 项变更未展开。</div>`:'';
+  $('#scanImportPreview').innerHTML=`<div><span class="pill good">共 ${preview.total} 个</span><span class="pill good">新增 ${preview.added}</span><span class="pill warn">更新 ${preview.updated}</span><span class="pill">不变 ${preview.unchanged}</span></div><div class="fine" style="margin:8px 0">${escapeHtml(preview.region)} / ${escapeHtml(preview.clientVersion)} / ${escapeHtml(preview.adapterId)}</div>${details?`<div>${details}</div>`:''}${more}`;
+}
+async function previewScanResultFile(file){
+  resetScanImport('正在校验扫描结果...');
+  let data;
+  try{data=JSON.parse(await file.text());}catch{resetScanImport('扫描结果不是有效 JSON。'); return;}
+  try{
+    const preview=await fetchJSON('/api/scan/import/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    pendingScanExport=data; pendingScanPreview=preview; renderScanImportPreview(preview);
+    $('#applyScanImportBtn').disabled=false;
+    toast(`扫描预览完成：新增 ${preview.added}，更新 ${preview.updated}`);
+  }catch(err){resetScanImport('扫描结果被拒绝：'+err.message);}
+}
+async function applyScanImport(){
+  if(!pendingScanExport||!pendingScanPreview)return;
+  const p=pendingScanPreview;
+  if(!confirm(`将新增 ${p.added} 个、更新 ${p.updated} 个驱动盘；${p.unchanged} 个保持不变。确认写入吗？`))return;
+  const button=$('#applyScanImportBtn'); button.disabled=true; button.textContent='正在写入...';
+  try{
+    await fetchJSON('/api/scan/import/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({export:pendingScanExport,previewHash:p.previewHash})});
+    await loadState(); renderAll(); resetScanImport('导入完成。可以选择新的扫描结果。');
+    toast(`扫描导入完成：新增 ${p.added}，更新 ${p.updated}`);
+  }catch(err){button.disabled=false; $('#scanImportPreview').textContent='写入失败：'+err.message;}
+  finally{button.textContent='确认写入库存';}
+}
+async function importStateFile(file){const text=await file.text(); let data; try{data=JSON.parse(text);}catch{alert('JSON 文件无法解析'); return;} const incoming=Array.isArray(data)?{version:109,discs:data,setEffects:[],characterBuilds:[],discClaims:[],claimsInitialized:true}:{version:data.version||1,discs:data.discs||[],setEffects:data.setEffects||[],characterBuilds:data.characterBuilds||[],discClaims:data.discClaims||[],claimsInitialized:!!data.claimsInitialized}; if(!confirm(`将导入 ${incoming.discs.length} 个驱动盘，并替换当前库存。继续吗？`))return; state=incoming; normalizeCharacterBuilds(); await saveState(); renderAll(); toast('导入完成');}
+async function addSampleData(){if(!confirm('添加一组示例数据用于测试？不会删除现有库存。'))return; const now=new Date().toISOString(); const make=(setName,slot,mainType,mainValue,subPairs)=>{const mainStat={type:mainType,value:mainValue}, subStats=subPairs.map(([type,value])=>({type,value})); return {id:newId(),setName,slot,rarity:'S',level:15,stats:[mainStat,...subStats],mainStat,subStats,locked:false,discarded:false,equippedBy:'',note:'',createdAt:now,updatedAt:now};}; const samples=[make('啄木鸟电音',1,'HP_FLAT',2200,[['CRIT_RATE',4.8],['CRIT_DMG',9.6],['ATK_PERCENT',3],['ANOMALY_PROFICIENCY',9]]),make('啄木鸟电音',2,'ATK_FLAT',316,[['CRIT_RATE',7.2],['CRIT_DMG',4.8],['ATK_PERCENT',6],['HP_PERCENT',3]]),make('啄木鸟电音',3,'DEF_FLAT',184,[['CRIT_DMG',19.2],['ATK_PERCENT',3],['PEN_FLAT',18],['ANOMALY_PROFICIENCY',9]]),make('啄木鸟电音',4,'CRIT_RATE',24,[['CRIT_DMG',9.6],['ATK_PERCENT',6],['PEN_FLAT',9],['ANOMALY_PROFICIENCY',9]]),make('激素朋克',4,'CRIT_DMG',48,[['CRIT_RATE',9.6],['ATK_PERCENT',3],['HP_PERCENT',3],['ANOMALY_PROFICIENCY',9]]),make('自由蓝调',4,'ANOMALY_PROFICIENCY',92,[['ATK_PERCENT',6],['CRIT_RATE',2.4],['CRIT_DMG',4.8],['PEN_FLAT',9]]),make('极地重金属',5,'ICE_DMG',30,[['CRIT_RATE',4.8],['CRIT_DMG',14.4],['ATK_PERCENT',3],['ANOMALY_PROFICIENCY',9]]),make('激素朋克',5,'ATK_PERCENT',30,[['CRIT_RATE',7.2],['CRIT_DMG',9.6],['HP_PERCENT',3],['ANOMALY_PROFICIENCY',18]]),make('自由蓝调',5,'PEN_RATIO',24,[['ATK_PERCENT',6],['ANOMALY_PROFICIENCY',18],['CRIT_RATE',2.4],['CRIT_DMG',4.8]]),make('激素朋克',6,'ATK_PERCENT',30,[['CRIT_RATE',7.2],['CRIT_DMG',9.6],['ATK_FLAT',19],['ANOMALY_PROFICIENCY',9]]),make('自由蓝调',6,'ANOMALY_MASTERY',30,[['ATK_PERCENT',6],['ANOMALY_PROFICIENCY',27],['CRIT_RATE',2.4],['PEN_FLAT',9]]),make('震星迪斯科',6,'IMPACT',18,[['CRIT_RATE',4.8],['CRIT_DMG',14.4],['ATK_PERCENT',6],['HP_PERCENT',3]])]; state.discs.push(...samples); await saveState(); renderAll(); toast('示例数据已添加');}
+function setupEvents(){
+  setupOcrEvents();
+  $('#discForm').addEventListener('input',ev=>{ev.target?.classList?.remove('ocrDoubt');});
+  $('#discForm').addEventListener('change',ev=>{ev.target?.classList?.remove('ocrDoubt'); const row=ev.target?.closest?.('.statRow'); if(row){const type=row.querySelector('.subStatType')?.value; const value=row.querySelector('.subStatValue')?.value; if(type&&value)row.classList.remove('ocrDoubt');}});
+  $('#setNameSelect').addEventListener('change',updateCustomSetVisibility);
+  $('#slot').addEventListener('change',()=>{fillMainStatSelect(); applyMainStatDefault(true);});
+  $('#mainStatType').addEventListener('change',()=>applyMainStatDefault(true));
+  $('#mainStatValue').addEventListener('change',()=>validateMainStatFormValue({correct:true}));
+  $('#mainStatValue').addEventListener('blur',()=>validateMainStatFormValue({correct:true,silent:true}));
+  $('#roleSystem').addEventListener('change',()=>{modeTouchedByUser=false; refreshModeOptions();});
+  for(const id of ['targetCritRate','targetCritDmg','targetFinalAttack','targetFinalHP','targetAnomalyProficiency']){const el=$('#'+id); if(el){el.addEventListener('input',maybeAutoStrictMode); el.addEventListener('change',maybeAutoStrictMode);}}
+  $('#characterSelect').addEventListener('change',onCharacterChanged);
+  $('#coreLevelSelect').addEventListener('change',()=>{updateCharacterInfo(); updateWEngineInfo();});
+  $('#wEngineSelect').addEventListener('change',updateWEngineInfo);
+  $('#wEngineRank').addEventListener('change',updateWEngineInfo);
+  $('#required4Set').addEventListener('change',updateDriveSetInfo);
+  $('#required2Set').addEventListener('change',updateDriveSetInfo);
+  $('#mode').addEventListener('change',()=>{modeTouchedByUser=true;});
+  $('#discForm').addEventListener('submit',saveDiscFromForm);
+  $('#resetFormBtn').addEventListener('click',()=>resetDiscForm(selectedSetName()));
+  $('#sampleDataBtn').addEventListener('click',addSampleData);
+  $('#exportStateBtn').addEventListener('click',exportState);
+  $('#changeStorageBtn').addEventListener('click',changeStoragePath);
+  $('#resetStorageBtn').addEventListener('click',resetStoragePath);
+  $('#exportResultsBtn').addEventListener('click',exportResults);
+  $('#clearResultsBtn').addEventListener('click',clearResults);
+  $('#importStateFile').addEventListener('change',ev=>{if(ev.target.files[0])importStateFile(ev.target.files[0]); ev.target.value='';});
+  $('#scanResultFile').addEventListener('change',ev=>{if(ev.target.files[0])previewScanResultFile(ev.target.files[0]); ev.target.value='';});
+  $('#applyScanImportBtn').addEventListener('click',applyScanImport);
+  $('#runOptimizeBtn').addEventListener('click',runOptimize);
+  $('#cancelOptimizeBtn').addEventListener('click',cancelOptimize);
+  $('#shutdownBtn').addEventListener('click',async()=>{if(!confirm('确定退出程序吗？'))return; try{await fetchJSON('/api/shutdown',{method:'POST'});}catch{} document.body.innerHTML='<main><section class="card"><h2>程序已退出</h2><p>可以关闭这个浏览器页面了。</p></section></main>';});
+  $('#clearInventoryFiltersBtn').addEventListener('click',clearInventoryFilters);
+  for(const id of ['filterText','filterSlot','filterSet','filterStat','filterAgent']){$('#'+id).addEventListener('input',renderInventory); $('#'+id).addEventListener('change',renderInventory);}
+  $('#resultsContainer').addEventListener('click',ev=>{const claimBtn=ev.target.closest('button[data-claim-disc]'); if(claimBtn){claimDiscForCurrentAgent(claimBtn.dataset.claimDisc); return;} const btn=ev.target.closest('button[data-store-build]'); if(!btn)return; storeResultBuild(Number(btn.dataset.storeBuild));});
+  $('#inventoryBody').addEventListener('click',ev=>{const btn=ev.target.closest('button[data-action]'); if(!btn)return; const id=btn.dataset.id; if(btn.dataset.action==='edit')editDisc(id); if(btn.dataset.action==='copy')duplicateDisc(id); if(btn.dataset.action==='delete')deleteDisc(id); if(btn.dataset.action==='removeOwner')removeDiscOwner(id);});
+}
+(async function init(){try{fillStaticControls(); setupEvents(); await loadState(); renderAll();}catch(err){$('#statusText').textContent='加载失败：'+err.message; console.error(err);}})();
+</script>
+</body>
+</html>
