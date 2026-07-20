@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/TonyUB/ZZZ_Drive_Disc/scan"
+	"github.com/TonyUB/ZZZ_Drive_Disc/scan/cn"
 )
 
 const maxInputSize = 32 << 20
@@ -36,12 +37,29 @@ func run(args []string) error {
 		return runConvert(args[1:])
 	case "check-adapter":
 		return runCheckAdapter(args[1:])
+	case "cn-profile":
+		return runCNProfile(args[1:])
 	case "help", "-h", "--help":
 		printUsage()
 		return nil
 	default:
 		return usageError()
 	}
+}
+
+func runCNProfile(args []string) error {
+	flags := flag.NewFlagSet("cn-profile", flag.ContinueOnError)
+	gameDir := flags.String("game-dir", cn.DefaultGameDir, "CN game installation directory")
+	if err := flags.Parse(args); err != nil {
+		return err
+	}
+	profile, err := cn.InspectInstall(*gameDir)
+	if err != nil {
+		return err
+	}
+	encoder := json.NewEncoder(os.Stdout)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(profile)
 }
 
 func runDecode(args []string) error {
@@ -229,6 +247,7 @@ Commands:
   decode         decode a decrypted GetEquipDataScRsp protobuf body
   convert        convert a decoded EquipmentResponse JSON fixture
   check-adapter  validate and fingerprint a version adapter
+  cn-profile     verify a local CNPRODWin3.0.0 installation
 
 Run a command with -h for its flags.`)
 	_ = context.Background() // keep the command package ready for active Sources

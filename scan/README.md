@@ -21,6 +21,23 @@
 
 `examples/` 只是无真实协议信息的格式示例，明确不能用于游戏。真实适配器必须精确列出客户端版本并与同版本目录一起发布。
 
+## 国服 Windows 3.0.0 状态
+
+已验证本机客户端标记为 `CNPRODWin3.0.0`，并加入：
+
+- 安装目录、版本、渠道、EXE 与资源清单的精确指纹检查；
+- 国服公开调度区域检查；
+- 官方二维码创建、状态查询和一次性 combo 授权；
+- 授权对象的日志脱敏与 token 字节自动清零。
+
+可以检查本机版本：
+
+```powershell
+go run ./scan/cmd/zzz-drive-scan cn-profile
+```
+
+详细启用状态见 [`adapters/cnprodwin-3.0.0/`](adapters/cnprodwin-3.0.0/)。目前 3.0.0 游戏会话、装备协议和模板目录仍为失败关闭；程序不会从受保护的客户端元数据提取密钥，也不会把旧版私服字段当成 3.0.0 使用。
+
 ## 开发者用法
 
 检查适配器：
@@ -55,7 +72,7 @@ go run ./scan/cmd/zzz-drive-scan convert `
 
 ## 实现区服会话
 
-实现 `scan.Source`，在 `FetchAll(context.Context)` 内完成一次性二维码授权、会话密钥协商和 `GetEquipDataCsReq` 请求，返回完整 `EquipmentResponse`。凭据只保留在该函数的最短生命周期内，并在返回前清除。登录与游戏协议会随区服和版本变化，不能在没有实机固件验证时复用旧命令号。
+实现 `scan.Source`，在 `FetchAll(context.Context)` 内完成一次性二维码授权、会话密钥协商和 `GetEquipDataCsReq` 请求，返回完整 `EquipmentResponse`。`scan/cn` 已提供国服二维码 bootstrap 与授权销毁类型。凭据只保留在该函数的最短生命周期内，并在返回前清除。登录与游戏协议会随区服和版本变化，不能在没有实机固件验证时复用旧命令号。
 
 ## 配装器导入保证
 

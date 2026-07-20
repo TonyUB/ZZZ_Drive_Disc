@@ -1,0 +1,24 @@
+{
+  "id": "cnprodwin-3.0.0",
+  "region": "cn",
+  "clientVersion": "CNPRODWin3.0.0",
+  "gameVersion": "3.0.0",
+  "channelId": 1,
+  "subChannelId": 2,
+  "platform": 3,
+  "regionName": "prod_gf_cn",
+  "regionTitle": "新艾利都",
+  "rsaVersion": 3,
+  "dispatchUrl": "https://globaldp-prod-cn01.juequling.com/query_dispatch",
+  "gatewayUrl": "https://prod-gf-cn.juequling.com/query_gateway",
+  "verification": {
+    "installFingerprint": true,
+    "dispatchDiscovery": true,
+    "qrBootstrap": true,
+    "gatewayDecryption": false,
+    "gameSession": false,
+    "equipmentProtocol": false,
+    "equipmentCatalog": false,
+    "liveScanEnabled": false
+  }
+}
