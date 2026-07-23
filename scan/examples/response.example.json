@@ -1,0 +1,18 @@
+{
+  "retcode": 0,
+  "equips": [
+    {
+      "uid": 987654,
+      "templateId": 31001,
+      "level": 15,
+      "star": 5,
+      "lock": true,
+      "mainProperties": [
+        {"key": 11101, "baseValue": 2200, "addValue": 0}
+      ],
+      "subProperties": [
+        {"key": 12101, "baseValue": 240, "addValue": 240}
+      ]
+    }
+  ]
+}
