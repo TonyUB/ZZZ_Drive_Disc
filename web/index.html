@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ZZZ Drive Optimizer v1.14｜绝区零驱动盘配装器</title>
+  <title>ZZZ Drive Optimizer v1.15｜绝区零驱动盘配装器</title>
   <style>
     :root {
       --bg: #0f1117;
@@ -279,7 +279,7 @@
   <div class="wrap">
     <div class="titlebar">
       <div>
-        <h1>ZZZ Drive Optimizer v1.14｜绝区零驱动盘配装器</h1>
+        <h1>ZZZ Drive Optimizer v1.15｜绝区零驱动盘配装器</h1>
         <div class="subtitle">本地保存库存，支持强攻/命破/异常/击破/辅助多职业配装。</div>
       </div>
       <div class="row titleActions">
@@ -315,9 +315,18 @@
   </section>
 
   <section class="card" id="scanImport">
-    <h2>扫描器批量导入</h2>
+    <h2>扫描器与批量导入</h2>
     <div class="tipText">
-      选择 <strong>ZZZ Drive Scan</strong> 生成的 <code>scan-result.json</code>。程序会先校验区服、客户端版本和协议指纹，再显示新增/更新差异；确认前不会改动库存。
+      使用独立维护的 <strong>ZZZ Scanner Next</strong> 扫描游戏中的 S 级 +15 驱动盘。请先打开游戏并停留在背包的驱动盘页面；扫描期间保持游戏可见，不要操作鼠标或切换窗口。
+    </div>
+    <div class="row">
+      <button id="launchExternalScannerBtn" class="success" type="button">启动扫描器</button>
+      <span class="fine">外部组件版本 1.0.45；扫描完成后会先显示数量并请你确认。</span>
+    </div>
+    <div id="externalScannerStatus" class="notice">尚未启动扫描器。</div>
+    <div class="fine">视觉扫描不读取游戏内存，也不接触账号凭据。识别或兼容问题由 <a href="https://github.com/ZztIsolation/ZZZ-Scanner.Next" target="_blank" rel="noreferrer">ZZZ Scanner Next</a> 项目维护。</div>
+    <div class="tipText" style="margin-top:14px">
+      兼容入口：选择 <strong>ZZZ Drive Scan</strong> 生成的 <code>scan-result.json</code>。程序会校验区服、客户端版本和协议指纹，再显示新增/更新差异。
     </div>
     <div class="row">
       <label class="ghostButton" for="scanResultFile">选择扫描结果 JSON</label>
@@ -971,7 +980,7 @@ async function resetStoragePath(){
   $('#statusText').textContent='已恢复默认路径';
   toast('已恢复默认存储位置');
 }
-async function saveState(){normalizeCharacterBuilds(); state.version=114; await fetchJSON('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)}); $('#statusText').textContent=`已保存：${new Date().toLocaleTimeString()}`;}
+async function saveState(){normalizeCharacterBuilds(); state.version=115; await fetchJSON('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)}); $('#statusText').textContent=`已保存：${new Date().toLocaleTimeString()}`;}
 function fillStatSelect(select,opts={}){const previous=select.value; select.innerHTML=''; if(opts.blank!==false){const blank=document.createElement('option'); blank.value=''; blank.textContent='不选择'; select.appendChild(blank);} for(const t of STAT_ORDER){const opt=document.createElement('option'); opt.value=t; opt.textContent=statLabel(t); select.appendChild(opt);} if(STAT_ORDER.includes(previous))select.value=previous;}
 function setupStatRows(){const box=$('#statsContainer'); box.innerHTML=''; for(let i=0;i<4;i++){const row=document.createElement('div'); row.className='statRow'; row.innerHTML='<select class="subStatType"></select><input class="subStatValue" type="number" step="0.1" placeholder="副词条数值" />'; box.appendChild(row); fillStatSelect(row.querySelector('select'),{blank:true});}}
 function fillMainStatSelect(selected='',opts={}){const slot=intNum('slot',1); const allowed=SLOT_MAIN_STAT_OPTIONS[slot]||[]; const select=$('#mainStatType'); select.innerHTML=''; const options=allowed.slice(); if(opts.blank){const blank=document.createElement('option'); blank.value=''; blank.textContent='请手动确认'; select.appendChild(blank);} if(selected&&!options.includes(selected))options.unshift(selected); for(const t of options){const opt=document.createElement('option'); opt.value=t; opt.textContent=statLabel(t)+(!allowed.includes(t)?'（不在当前槽位池，请确认）':''); select.appendChild(opt);} if(opts.blank&&!selected)select.value=''; else select.value=(selected&&options.includes(selected))?selected:(options[0]||''); if(!selected&&!opts.blank)applyMainStatDefault(true);}
@@ -1269,7 +1278,7 @@ function renderResults(resp){
   const occupyPlan=occupiedPolicySummary();
   const charPlan=`代理人：${characterLabel(currentCharacter())}`;
   const wEnginePlan=`音擎：${selectedWEngineSummary()}`;
-  $('#resultsSummary').innerHTML=`<strong>${escapeHtml(resp.message||'完成')}</strong><br>${escapeHtml(setPlan)}<br>${escapeHtml(mainLockPlan)}<br>${escapeHtml(floorPlan)}<br>${escapeHtml(occupyPlan)}<br>${escapeHtml(charPlan)}<br>${escapeHtml(wEnginePlan)}<br>候选数：${escapeHtml(countText)}；实际搜索组合：${escapeHtml(resp.searchedCombinations||0)}。<br>v1.14 计算口径：角色60级成长、所选核心技/面板状态、音擎基础与高级属性、驱动盘主副属性和2件套静态效果计入角色详情面板；4件套和音擎技能类效果统一作为实战参考。敌人抗性无视、队伍条件、专属技能倍率不直接写入通用期望指数。`;
+  $('#resultsSummary').innerHTML=`<strong>${escapeHtml(resp.message||'完成')}</strong><br>${escapeHtml(setPlan)}<br>${escapeHtml(mainLockPlan)}<br>${escapeHtml(floorPlan)}<br>${escapeHtml(occupyPlan)}<br>${escapeHtml(charPlan)}<br>${escapeHtml(wEnginePlan)}<br>候选数：${escapeHtml(countText)}；实际搜索组合：${escapeHtml(resp.searchedCombinations||0)}。<br>v1.15 计算口径：角色60级成长、所选核心技/面板状态、音擎基础与高级属性、驱动盘主副属性和2件套静态效果计入角色详情面板；4件套和音擎技能类效果统一作为实战参考。敌人抗性无视、队伍条件、专属技能倍率不直接写入通用期望指数。`;
   if(!resp.results||!resp.results.length){
     const misses=resp.nearMisses||[];
     let html='<div class="notice">没有达标结果。请检查所选 4 件套 / 2 件套在每个槽位是否有库存，或 4/5/6 号位主属性限制、期望属性是否过严；也可以把暂不需要的期望属性改回 0。普通策略下暴击率使用 ±1 个词条窗口；异常精通允许低 10 点；严格指标策略会显示最接近目标的方案。</div>';
@@ -1418,6 +1427,78 @@ async function clearResults(){
   $('#resultsContainer').innerHTML='';
   toast('配装结果和配装选项已清空');
 }
+let externalScannerPollTimer=null;
+let externalScannerHandledJob='';
+function setExternalScannerButton(running=false){
+  const button=$('#launchExternalScannerBtn');
+  if(!button)return;
+  button.disabled=running;
+  button.textContent=running?'正在扫描...':'启动扫描器';
+}
+function renderExternalScannerStatus(status){
+  const box=$('#externalScannerStatus');
+  if(!box)return;
+  const p=status?.preview;
+  const pills=p?`<div><span class="pill good">共 ${p.total} 个</span><span class="pill good">新增 ${p.added}</span><span class="pill warn">移除 ${p.removed}</span><span class="pill">匹配 ${p.unchanged}</span></div>`:'';
+  const warnings=(p?.warnings||[]).map(item=>`<div class="fine" style="margin-top:6px">${escapeHtml(item)}</div>`).join('');
+  box.innerHTML=`${pills}<div${pills?' class="fine" style="margin-top:8px"':''}>${escapeHtml(status?.message||'')}</div>${warnings}`;
+}
+async function startExternalScanner(){
+  if(!confirm('请确认游戏已经打开，并停留在背包的驱动盘页面。扫描期间请保持游戏可见且不要操作鼠标。现在启动扫描器吗？'))return;
+  if(externalScannerPollTimer){clearTimeout(externalScannerPollTimer); externalScannerPollTimer=null;}
+  externalScannerHandledJob='';
+  setExternalScannerButton(true);
+  $('#externalScannerStatus').textContent='正在启动外部扫描器...';
+  try{
+    const status=await fetchJSON('/api/scan/external/start',{method:'POST'});
+    renderExternalScannerStatus(status);
+    scheduleExternalScannerPoll(500);
+  }catch(err){
+    setExternalScannerButton(false);
+    $('#externalScannerStatus').innerHTML=`<span class="pill bad">无法启动</span><div class="fine" style="margin-top:8px">${escapeHtml(err.message)}</div><div class="fine" style="margin-top:6px"><a href="https://github.com/ZztIsolation/ZZZ-Scanner.Next/releases/tag/scanner-1.0.45" target="_blank" rel="noreferrer">打开扫描器 1.0.45 下载页</a></div>`;
+  }
+}
+function scheduleExternalScannerPoll(delay=1000){
+  if(externalScannerPollTimer)clearTimeout(externalScannerPollTimer);
+  externalScannerPollTimer=setTimeout(()=>pollExternalScannerStatus(),delay);
+}
+async function pollExternalScannerStatus(){
+  externalScannerPollTimer=null;
+  try{
+    const status=await fetchJSON('/api/scan/external/status');
+    renderExternalScannerStatus(status);
+    if(status.status==='running'){
+      setExternalScannerButton(true);
+      scheduleExternalScannerPoll(1000);
+      return;
+    }
+    setExternalScannerButton(false);
+    if(status.status==='ready'&&status.preview&&externalScannerHandledJob!==status.jobId){
+      externalScannerHandledJob=status.jobId;
+      const p=status.preview;
+      const confirmed=confirm(`扫描完成，共识别 ${p.total} 个驱动盘。\n新增 ${p.added} 个，移除 ${p.removed} 个，匹配并保留人工信息 ${p.unchanged} 个。\n\n只会替换此前由 ZZZ Scanner Next 导入的记录；手工录入和协议扫描记录不受影响。确认写入库存吗？`);
+      if(!confirmed){
+        $('#externalScannerStatus').insertAdjacentHTML('beforeend','<div class="fine" style="margin-top:8px">已取消写入；扫描结果没有修改库存。</div>');
+        return;
+      }
+      setExternalScannerButton(true);
+      $('#launchExternalScannerBtn').textContent='正在写入...';
+      try{
+        await fetchJSON('/api/scan/external/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:status.jobId,previewHash:p.previewHash})});
+        await loadState(); renderAll();
+        renderExternalScannerStatus({message:`导入完成：库存已写入 ${p.total} 个视觉扫描驱动盘。`,status:'completed'});
+        toast(`扫描导入完成：新增 ${p.added}，移除 ${p.removed}`);
+      }catch(err){
+        $('#externalScannerStatus').innerHTML=`<span class="pill bad">写入失败</span><div class="fine" style="margin-top:8px">${escapeHtml(err.message)}</div>`;
+      }finally{setExternalScannerButton(false);}
+      return;
+    }
+    if(status.status==='failed'||status.status==='missing')toast(status.message||'扫描器运行失败');
+  }catch(err){
+    setExternalScannerButton(false);
+    $('#externalScannerStatus').textContent='读取扫描状态失败：'+err.message;
+  }
+}
 function resetScanImport(message='尚未选择扫描结果。'){
   pendingScanExport=null; pendingScanPreview=null;
   const button=$('#applyScanImportBtn'); button.disabled=true;
@@ -1480,6 +1561,7 @@ function setupEvents(){
   $('#exportResultsBtn').addEventListener('click',exportResults);
   $('#clearResultsBtn').addEventListener('click',clearResults);
   $('#importStateFile').addEventListener('change',ev=>{if(ev.target.files[0])importStateFile(ev.target.files[0]); ev.target.value='';});
+  $('#launchExternalScannerBtn').addEventListener('click',startExternalScanner);
   $('#scanResultFile').addEventListener('change',ev=>{if(ev.target.files[0])previewScanResultFile(ev.target.files[0]); ev.target.value='';});
   $('#applyScanImportBtn').addEventListener('click',applyScanImport);
   $('#runOptimizeBtn').addEventListener('click',runOptimize);
@@ -1490,7 +1572,7 @@ function setupEvents(){
   $('#resultsContainer').addEventListener('click',ev=>{const claimBtn=ev.target.closest('button[data-claim-disc]'); if(claimBtn){claimDiscForCurrentAgent(claimBtn.dataset.claimDisc); return;} const btn=ev.target.closest('button[data-store-build]'); if(!btn)return; storeResultBuild(Number(btn.dataset.storeBuild));});
   $('#inventoryBody').addEventListener('click',ev=>{const btn=ev.target.closest('button[data-action]'); if(!btn)return; const id=btn.dataset.id; if(btn.dataset.action==='edit')editDisc(id); if(btn.dataset.action==='copy')duplicateDisc(id); if(btn.dataset.action==='delete')deleteDisc(id); if(btn.dataset.action==='removeOwner')removeDiscOwner(id);});
 }
-(async function init(){try{fillStaticControls(); setupEvents(); await loadState(); renderAll();}catch(err){$('#statusText').textContent='加载失败：'+err.message; console.error(err);}})();
+(async function init(){try{fillStaticControls(); setupEvents(); await loadState(); renderAll(); await pollExternalScannerStatus();}catch(err){$('#statusText').textContent='加载失败：'+err.message; console.error(err);}})();
 </script>
 </body>
 </html>

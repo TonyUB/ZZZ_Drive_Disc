@@ -33,7 +33,7 @@ import (
 //go:embed web/index.html
 var indexHTML string
 
-const appVersion = 114
+const appVersion = 115
 
 // critDisplayTolerance is used only for human-facing wording.
 const critDisplayTolerance = 0.30
@@ -386,6 +386,9 @@ func main() {
 	mux.HandleFunc("/api/ocr/parse", handleOCRParse)
 	mux.HandleFunc("/api/scan/import/preview", handleScanImportPreview)
 	mux.HandleFunc("/api/scan/import/apply", handleScanImportApply)
+	mux.HandleFunc("/api/scan/external/start", handleExternalScannerStart)
+	mux.HandleFunc("/api/scan/external/status", handleExternalScannerStatus)
+	mux.HandleFunc("/api/scan/external/apply", handleExternalScannerApply)
 	mux.HandleFunc("/api/shutdown", handleShutdown)
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
@@ -395,7 +398,7 @@ func main() {
 	addr := listener.Addr().String()
 	url := "http://" + addr + "/"
 
-	fmt.Println("ZZZ Drive Optimizer v1.14 已启动")
+	fmt.Println("ZZZ Drive Optimizer v1.15 已启动")
 	fmt.Println("数据文件:", storagePath)
 	fmt.Println("浏览器地址:", url)
 	fmt.Println("关闭此窗口即可退出程序。")
@@ -3752,7 +3755,7 @@ func applyTwoPiecePanelBonuses(stats map[string]float64, setCounts map[string]in
 }
 
 func applyConditionalFourPiecePanelBonuses(stats map[string]float64, setCounts map[string]int, element string) {
-	// v1.14：角色详情页面板只计入角色成长/核心、音擎基础与高级属性、驱动盘主副属性、2件套静态效果。
+	// v1.15：角色详情页面板只计入角色成长/核心、音擎基础与高级属性、驱动盘主副属性、2件套静态效果。
 	// 4件套效果即使文字条件看似常驻，也统一放入实战参考，避免与游戏内“代理人信息”页面不一致。
 	_ = stats
 	_ = setCounts

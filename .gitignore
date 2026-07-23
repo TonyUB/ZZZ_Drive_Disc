@@ -1,3 +1,6 @@
 .tmp/
 *.test
 scan-result.json
+scan/external/ZZZ-Scanner.Next/*
+!scan/external/ZZZ-Scanner.Next/README.md
+!scan/external/ZZZ-Scanner.Next/LICENSE

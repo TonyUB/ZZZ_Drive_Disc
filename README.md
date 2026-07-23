@@ -1,8 +1,17 @@
-# ZZZ Drive Optimizer v1.14
+# ZZZ Drive Optimizer v1.15
 
-绝区零驱动盘配装器。v1.14 以 v1.13 为兼容基线，重点修正 3.0 代理人佩洛伊斯在“未升级技能 / 未计入核心技F成长”状态下的面板口径，并修正拂晓行纪 4 件套暴击伤害被写入角色详情面板的问题。
+绝区零驱动盘配装器。v1.15 继续兼容 v1.14 库存和配装数据，新增调用独立视觉扫描器的一键扫描入口。
 
-## v1.14 更新
+## v1.15 更新
+
+- 页面新增“启动扫描器”按钮，调用独立维护的 ZZZ Scanner Next 1.0.45。
+- 扫描器以外部组件运行；配装器不复制或修改其 OCR、窗口控制和兼容性实现。
+- 完整扫描成功后自动读取 `export.json`，转换套装、槽位、等级和主副词条，并在用户确认后写入库存。
+- 重复扫描按标准化词条指纹匹配；匹配成功时保留备注、废弃标记、锁定状态、装备角色和配装归属。
+- 只替换此前由 ZZZ Scanner Next 导入的记录，手工录入及带游戏 UID 的协议扫描记录不会被删除。
+- 状态版本升级为 `115`。
+
+## v1.14 基线
 
 ### 佩洛伊斯面板状态适配
 
@@ -36,11 +45,15 @@
 
 ## 使用方式
 
-Windows 下双击 `ZZZ_Drive_Optimizer_v1.14.exe`。程序会启动本地服务并自动打开浏览器；黑色命令窗口关闭即退出程序。
+Windows 下双击 `ZZZ_Drive_Optimizer_v1.15.exe`。程序会启动本地服务并自动打开浏览器；黑色命令窗口关闭即退出程序。
 
 ## 扫描器与批量导入
 
-仓库中的 [`scan/`](scan/) 是独立、可复用的驱动盘扫描数据核心。它把一次完整的游戏装备响应转换为带客户端版本与协议指纹的 `scan-result.json`。配装器新增“扫描器批量导入”，先预览新增、更新、不变数量，用户确认后才按游戏内稳定 UID 写入；重复导入不会产生副本，已有备注、废弃标记和配装归属会保留。
+点击页面中的“启动扫描器”会调用 `scan/external/ZZZ-Scanner.Next/ZZZ-Scanner.Next.exe`。完整发布包内置上游 1.0.45 self-contained 版本及本地 OCR 模型，不需要另装 .NET，也不需要联网识别。扫描前应打开游戏并停留在背包驱动盘页面，扫描期间保持游戏可见且不要操作鼠标。
+
+视觉扫描器没有游戏内部 UID、锁定状态和装备角色字段；配装器使用套装、槽位、等级和全部词条生成匹配指纹。完全相同的多块驱动盘在物理上无法区分，但不影响配装计算。扫描器来源、使用说明与问题反馈见 [ZztIsolation/ZZZ-Scanner.Next](https://github.com/ZztIsolation/ZZZ-Scanner.Next)。
+
+仓库中原有的 [`scan/`](scan/) 协议数据核心和 `scan-result.json` 手工导入入口继续保留。该入口按游戏内稳定 UID 写入，并严格校验区服、客户端版本与协议指纹。
 
 真实登录/传输层必须使用与区服和客户端版本完全匹配的适配器。旧版或未经实机验证的协议会被拒绝，详见 [`scan/README.md`](scan/README.md)。
 
@@ -53,5 +66,5 @@ Windows 下双击 `ZZZ_Drive_Optimizer_v1.14.exe`。程序会启动本地服务�
 ```bash
 go test ./...
 go vet ./...
-GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o ZZZ_Drive_Optimizer_v1.14.exe .
+GOOS=windows GOARCH=amd64 go build -trimpath -ldflags "-s -w" -o ZZZ_Drive_Optimizer_v1.15.exe .
 ```
