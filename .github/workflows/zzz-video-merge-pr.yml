@@ -1,0 +1,99 @@
+name: Temporary ZZZ video merge PR
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Check out temporary branch
+        uses: actions/checkout@v4
+
+      - name: Install video and download tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade gdown
+
+      - name: Download source recordings in chronological order
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p input output
+          python - <<'PY'
+          import pathlib
+          import gdown
+
+          files = [
+              ("1RlpjMNmazVx7eGYuAUevHyTNrqZoBMC8", "01_2026-07-28_21-46-57.mp4"),
+              ("19WKiwQ7JRFJVUrF9Vs6cTE3oMSp70Y3o", "02_2026-07-28_21-59-10.mp4"),
+              ("1gaOnX_1_8PLgY_CZO3Ib41_hR6-k-EDh", "03_2026-07-28_22-08-35.mp4"),
+              ("1Fo7TvugQMlHgRmowl8yAl6m_7ebjY_hB", "04_2026-07-28_22-14-45.mp4"),
+              ("1DeDs0Rn8PDht5EJD22mQpoHbPyBNxkGa", "05_2026-07-28_22-19-47.mp4"),
+          ]
+
+          out_dir = pathlib.Path("input")
+          for file_id, name in files:
+              destination = out_dir / name
+              print(f"Downloading {name} ...", flush=True)
+              result = gdown.download(id=file_id, output=str(destination), quiet=False)
+              if result is None or not destination.exists() or destination.stat().st_size < 1_000_000:
+                  raise RuntimeError(f"Download failed or file is unexpectedly small: {name}")
+              print(f"Downloaded {name}: {destination.stat().st_size} bytes", flush=True)
+          PY
+
+      - name: Verify each source recording
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > output/source_metadata.txt
+          for f in input/*.mp4; do
+            echo "===== $f =====" | tee -a output/source_metadata.txt
+            ffprobe -v error \
+              -show_entries format=duration,size:stream=index,codec_type,codec_name,width,height,r_frame_rate,avg_frame_rate,sample_rate,channels \
+              -of default=noprint_wrappers=1 "$f" | tee -a output/source_metadata.txt
+            ffmpeg -v error -xerror -i "$f" -map 0:v:0 -map 0:a:0? -f null -
+          done
+
+      - name: Concatenate without cuts or re-encoding
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > concat.txt <<'EOF'
+          file 'input/01_2026-07-28_21-46-57.mp4'
+          file 'input/02_2026-07-28_21-59-10.mp4'
+          file 'input/03_2026-07-28_22-08-35.mp4'
+          file 'input/04_2026-07-28_22-14-45.mp4'
+          file 'input/05_2026-07-28_22-19-47.mp4'
+          EOF
+
+          OUT='output/ZZZ_3.1_丹_6加1_完整抽卡记录_20260728_按时间拼接.mp4'
+          ffmpeg -hide_banner -y \
+            -f concat -safe 0 -i concat.txt \
+            -map 0:v:0 -map 0:a:0? \
+            -c copy -avoid_negative_ts make_zero -movflags +faststart \
+            "$OUT"
+
+          ffmpeg -v error -xerror -i "$OUT" -map 0:v:0 -map 0:a:0? -f null -
+          ffprobe -v error \
+            -show_entries format=duration,size:stream=index,codec_type,codec_name,width,height,r_frame_rate,avg_frame_rate,sample_rate,channels \
+            -of default=noprint_wrappers=1 "$OUT" > output/merged_metadata.txt
+          sha256sum "$OUT" > output/SHA256SUMS.txt
+          ls -lh "$OUT" | tee output/file_size.txt
+
+      - name: Upload merged video artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zzz-merged-video
+          path: output/
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
