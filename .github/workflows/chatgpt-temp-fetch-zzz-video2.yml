@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - chatgpt-temp-zzz-video2-20260729
+  pull_request:
+    branches:
+      - main
 
 permissions:
   contents: read
