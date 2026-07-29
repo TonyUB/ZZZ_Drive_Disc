@@ -1,0 +1,109 @@
+name: Temporary ZZZ uploadable video merge
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  merge-uploadable:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install FFmpeg and Google Drive downloader
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          python -m pip install --upgrade gdown
+
+      - name: Download the five public source recordings in timestamp order
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p input output
+          python - <<'PY'
+          import pathlib
+          import gdown
+
+          files = [
+              ("1RlpjMNmazVx7eGYuAUevHyTNrqZoBMC8", "01_2026-07-28_21-46-57.mp4"),
+              ("19WKiwQ7JRFJVUrF9Vs6cTE3oMSp70Y3o", "02_2026-07-28_21-59-10.mp4"),
+              ("1gaOnX_1_8PLgY_CZO3Ib41_hR6-k-EDh", "03_2026-07-28_22-08-35.mp4"),
+              ("1Fo7TvugQMlHgRmowl8yAl6m_7ebjY_hB", "04_2026-07-28_22-14-45.mp4"),
+              ("1DeDs0Rn8PDht5EJD22mQpoHbPyBNxkGa", "05_2026-07-28_22-19-47.mp4"),
+          ]
+
+          out_dir = pathlib.Path("input")
+          for file_id, name in files:
+              destination = out_dir / name
+              print(f"Downloading {name} ...", flush=True)
+              result = gdown.download(id=file_id, output=str(destination), quiet=False)
+              if result is None or not destination.exists() or destination.stat().st_size < 1_000_000:
+                  raise RuntimeError(f"Download failed or file is unexpectedly small: {name}")
+              print(f"Downloaded {name}: {destination.stat().st_size} bytes", flush=True)
+          PY
+
+      - name: Concatenate all content and encode one uploadable 1080p60 transport stream
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > concat.txt <<'EOF'
+          file 'input/01_2026-07-28_21-46-57.mp4'
+          file 'input/02_2026-07-28_21-59-10.mp4'
+          file 'input/03_2026-07-28_22-08-35.mp4'
+          file 'input/04_2026-07-28_22-14-45.mp4'
+          file 'input/05_2026-07-28_22-19-47.mp4'
+          EOF
+
+          OUT='output/ZZZ_3.1_丹_6加1_完整抽卡记录_20260728_按时间拼接_1080p60.ts'
+
+          ffmpeg -hide_banner -y \
+            -fflags +genpts \
+            -f concat -safe 0 -i concat.txt \
+            -map 0:v:0 -map 0:a:0? \
+            -c:v libx264 -preset veryfast -profile:v high -level 4.2 \
+            -pix_fmt yuv420p -r 60 -g 120 -keyint_min 60 -sc_threshold 40 \
+            -b:v 2800k -maxrate 3200k -bufsize 6400k \
+            -c:a aac -b:a 128k -ar 48000 -ac 2 \
+            -max_muxing_queue_size 4096 \
+            -mpegts_flags +resend_headers -muxdelay 0 \
+            -metadata title='ZZZ 3.1 丹 6+1 完整抽卡记录 2026-07-28' \
+            -metadata comment='Five complete recordings concatenated chronologically; no content cuts.' \
+            -f mpegts "$OUT"
+
+          SIZE=$(stat -c '%s' "$OUT")
+          echo "Output size: $SIZE bytes"
+          test "$SIZE" -lt 520000000
+
+          ffprobe -v error \
+            -show_entries format=format_name,duration,size:stream=index,codec_type,codec_name,width,height,r_frame_rate,avg_frame_rate,sample_rate,channels \
+            -of default=noprint_wrappers=1 "$OUT" | tee output/merged_metadata.txt
+          sha256sum "$OUT" | tee output/SHA256SUMS.txt
+
+          ffmpeg -v error -xerror -i "$OUT" -t 5 -map 0:v:0 -map 0:a:0? -f null -
+          ffmpeg -v error -xerror -sseof -10 -i "$OUT" -t 5 -map 0:v:0 -map 0:a:0? -f null -
+
+      - name: Upload the single video as an uncompressed workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: zzz-uploadable-video
+          path: output/ZZZ_3.1_丹_6加1_完整抽卡记录_20260728_按时间拼接_1080p60.ts
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+      - name: Upload verification metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: zzz-uploadable-video-metadata
+          path: |
+            output/merged_metadata.txt
+            output/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 1
