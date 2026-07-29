@@ -4,12 +4,15 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
+	"embed"
 	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"log"
 	"math"
 	"net"
@@ -26,14 +29,42 @@ import (
 	"time"
 	"unicode"
 	"unicode/utf16"
-
-	_ "embed"
 )
 
-//go:embed web/index.html
-var indexHTML string
+//go:embed web/index.html web/assets
+var webFiles embed.FS
 
-const appVersion = 115
+const appVersion = 121
+
+// releaseEdition is set to A or B at build time with -ldflags "-X main.releaseEdition=A".
+// appVersion remains the persisted-state schema version so both editions can open
+// the same inventory without migrations.
+const releaseSeries = "1.0"
+
+var releaseEdition = "B"
+
+func normalizedReleaseEdition(edition string) string {
+	if strings.EqualFold(strings.TrimSpace(edition), "A") {
+		return "A"
+	}
+	return "B"
+}
+
+func releaseLabelForEdition(edition string) string {
+	return "v" + releaseSeries + normalizedReleaseEdition(edition)
+}
+
+func releaseLabel() string {
+	return releaseLabelForEdition(releaseEdition)
+}
+
+func scannerIncludedForEdition(edition string) bool {
+	return normalizedReleaseEdition(edition) == "B"
+}
+
+func scannerIncluded() bool {
+	return scannerIncludedForEdition(releaseEdition)
+}
 
 // critDisplayTolerance is used only for human-facing wording.
 const critDisplayTolerance = 0.30
@@ -63,6 +94,9 @@ type StatValue struct {
 	// Suspect is used only by OCR import preview. It marks fields that were
 	// inferred from fuzzy text or value patterns and should be checked.
 	Suspect bool `json:"suspect,omitempty"`
+	// Extra preserves zzz_calculator interoperability fields such as stat,
+	// mode, label and rawValue without exposing them in this app's editor.
+	Extra map[string]json.RawMessage `json:"-"`
 }
 
 type Disc struct {
@@ -82,6 +116,84 @@ type Disc struct {
 	Note       string      `json:"note"`
 	CreatedAt  string      `json:"createdAt"`
 	UpdatedAt  string      `json:"updatedAt"`
+	// Extra preserves calculator/scanner fields that this optimizer does not
+	// use (setId, maxLevel, source, raw, reservations, future extensions, ...).
+	// They are emitted at their original JSON level so a round trip is lossless.
+	Extra map[string]json.RawMessage `json:"-"`
+}
+
+func unmarshalWithExtras(data []byte, target any, known ...string) (map[string]json.RawMessage, error) {
+	if err := json.Unmarshal(data, target); err != nil {
+		return nil, err
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	for _, key := range known {
+		delete(fields, key)
+	}
+	if len(fields) == 0 {
+		return nil, nil
+	}
+	return fields, nil
+}
+
+func marshalWithExtras(base any, extras map[string]json.RawMessage) ([]byte, error) {
+	data, err := json.Marshal(base)
+	if err != nil {
+		return nil, err
+	}
+	if len(extras) == 0 {
+		return data, nil
+	}
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return nil, err
+	}
+	for key, value := range extras {
+		if _, known := fields[key]; known || len(value) == 0 {
+			continue
+		}
+		fields[key] = value
+	}
+	return json.Marshal(fields)
+}
+
+func (stat *StatValue) UnmarshalJSON(data []byte) error {
+	type statAlias StatValue
+	var decoded statAlias
+	extras, err := unmarshalWithExtras(data, &decoded, "type", "value", "raw", "suspect")
+	if err != nil {
+		return err
+	}
+	*stat = StatValue(decoded)
+	stat.Extra = extras
+	return nil
+}
+
+func (stat StatValue) MarshalJSON() ([]byte, error) {
+	type statAlias StatValue
+	return marshalWithExtras(statAlias(stat), stat.Extra)
+}
+
+func (disc *Disc) UnmarshalJSON(data []byte) error {
+	type discAlias Disc
+	var decoded discAlias
+	extras, err := unmarshalWithExtras(data, &decoded,
+		"id", "setName", "slot", "rarity", "level", "stats", "mainStat", "subStats",
+		"locked", "discarded", "equippedBy", "note", "createdAt", "updatedAt")
+	if err != nil {
+		return err
+	}
+	*disc = Disc(decoded)
+	disc.Extra = extras
+	return nil
+}
+
+func (disc Disc) MarshalJSON() ([]byte, error) {
+	type discAlias Disc
+	return marshalWithExtras(discAlias(disc), disc.Extra)
 }
 
 type SetEffect struct {
@@ -161,6 +273,7 @@ type OptimizeRequest struct {
 	TargetCritDmg            float64             `json:"targetCritDmg"`
 	TargetAnomalyProficiency float64             `json:"targetAnomalyProficiency"`
 	TargetFinalHP            float64             `json:"targetFinalHp"`
+	TargetFinalDefense       float64             `json:"targetFinalDefense"`
 	TargetFinalAttack        float64             `json:"targetFinalAttack"`
 	Mode                     string              `json:"mode"`
 	WantedWeights            map[string]float64  `json:"wantedWeights"`
@@ -196,10 +309,13 @@ type OptimizeResult struct {
 	CritFitFactor       float64            `json:"critFitFactor"`
 	EffectiveWords      float64            `json:"effectiveWords"`
 	WeightedWords       float64            `json:"weightedWords"`
+	GameEffectiveWords  float64            `json:"gameEffectiveWords"`
 	FinalAttack         float64            `json:"finalAttack"`
 	FinalHP             float64            `json:"finalHp"`
+	FinalDefense        float64            `json:"finalDefense"`
 	CombatFinalAttack   float64            `json:"combatFinalAttack"`
 	CombatFinalHP       float64            `json:"combatFinalHp"`
+	CombatFinalDefense  float64            `json:"combatFinalDefense"`
 	InitialEnergyRegen  float64            `json:"initialEnergyRegen"`
 	FinalAnomalyMastery float64            `json:"finalAnomalyMastery"`
 	SheerForce          float64            `json:"sheerForce"`
@@ -248,10 +364,22 @@ type serverState struct {
 	mu          sync.RWMutex
 	state       AppState
 	storagePath string
-	importToken string
 }
 
 var srvState serverState
+
+type scannerBundleManifest struct {
+	Version    string            `json:"version"`
+	ReleaseTag string            `json:"releaseTag"`
+	Source     string            `json:"source"`
+	Package    string            `json:"package"`
+	Files      map[string]string `json:"files"`
+}
+
+var scannerRuntime struct {
+	sync.Mutex
+	cmd *exec.Cmd
+}
 
 var optimizerState struct {
 	mu      sync.Mutex
@@ -274,7 +402,7 @@ var rollValue = map[string]float64{
 }
 
 var builtinSetNames = []string{
-	"啄木鸟电音", "震星迪斯科", "河豚电音", "激素朋克", "摇摆爵士", "灵魂摇滚", "自由蓝调", "极地重金属", "炎狱重金属", "雷暴重金属", "獠牙重金属", "混沌重金属", "原始朋克", "混沌爵士", "折枝剑歌", "静听嘉音", "法厄同之歌", "如影相随", "云岿如我", "山大王", "月光骑士颂", "拂晓生花", "雪兔梦游仙境", "囚徒手记", "流光咏叹", "沧浪行歌", "呼啸沙龙", "拂晓行纪",
+	"啄木鸟电音", "震星迪斯科", "河豚电音", "激素朋克", "摇摆爵士", "灵魂摇滚", "自由蓝调", "极地重金属", "炎狱重金属", "雷暴重金属", "獠牙重金属", "混沌重金属", "原始朋克", "混沌爵士", "折枝剑歌", "静听嘉音", "法厄同之歌", "如影相随", "云岿如我", "山大王", "月光骑士颂", "拂晓生花", "雪兔梦游仙境", "囚徒手记", "流光咏叹", "沧浪行歌", "呼啸沙龙", "拂晓行纪", "荧光蛛眼", "谶羽之誓", "荆棘玫瑰",
 }
 
 var builtinSetNameLookup = func() map[string]string {
@@ -287,7 +415,7 @@ var builtinSetNameLookup = func() map[string]string {
 }()
 
 var ocrStatLabels = []string{
-	"暴击伤害", "暴击率", "异常精通", "异常掌控", "能量自动回复", "能量回复", "穿透率", "穿透值", "火属性伤害", "冰属性伤害", "电属性伤害", "物理属性伤害", "以太属性伤害", "风属性伤害", "生命值", "攻击力", "防御力", "冲击力",
+	"暴击伤害", "暴击率", "异常精通", "异常掌控", "能量自动回复", "能量回复", "穿透率", "穿透值", "火属性伤害", "冰属性伤害", "电属性伤害", "物理属性伤害", "以太属性伤害", "风属性伤害", "流明属性伤害", "生命值", "攻击力", "防御力", "冲击力",
 }
 
 var ocrSlotMainAllowed = map[int]map[string]bool{
@@ -295,7 +423,7 @@ var ocrSlotMainAllowed = map[int]map[string]bool{
 	2: map[string]bool{"ATK_FLAT": true},
 	3: map[string]bool{"DEF_FLAT": true},
 	4: map[string]bool{"HP_PERCENT": true, "ATK_PERCENT": true, "DEF_PERCENT": true, "CRIT_RATE": true, "CRIT_DMG": true, "ANOMALY_PROFICIENCY": true},
-	5: map[string]bool{"HP_PERCENT": true, "ATK_PERCENT": true, "DEF_PERCENT": true, "PEN_RATIO": true, "FIRE_DMG": true, "ICE_DMG": true, "ELECTRIC_DMG": true, "PHYSICAL_DMG": true, "ETHER_DMG": true, "WIND_DMG": true},
+	5: map[string]bool{"HP_PERCENT": true, "ATK_PERCENT": true, "DEF_PERCENT": true, "PEN_RATIO": true, "FIRE_DMG": true, "ICE_DMG": true, "ELECTRIC_DMG": true, "PHYSICAL_DMG": true, "ETHER_DMG": true, "WIND_DMG": true, "LUMIFLUX_DMG": true},
 	6: map[string]bool{"HP_PERCENT": true, "ATK_PERCENT": true, "DEF_PERCENT": true, "ANOMALY_MASTERY": true, "ENERGY_REGEN": true, "IMPACT": true},
 }
 
@@ -312,6 +440,8 @@ var defaultEffects = []SetEffect{
 	{SetName: "呼啸沙龙", TwoStat: "WIND_DMG", TwoValue: 10, FourStat: "", FourValue: 0, Note: "3.0：2件套风属性伤害+10%；4件套按满触发作为实战参考"},
 	{SetName: "拂晓行纪", TwoStat: "ETHER_DMG", TwoValue: 10, FourStat: "", FourValue: 0, Note: "3.0：2件套以太伤害+10%；4件套按角色属性/触发状态计算"},
 	{SetName: "獠牙重金属", TwoStat: "PHYSICAL_DMG", TwoValue: 10, FourStat: "", FourValue: 0, Note: "2件套静态加成"},
+	{SetName: "谶羽之誓", TwoStat: "ANOMALY_PROFICIENCY", TwoValue: 30, FourStat: "", FourValue: 0, Note: "3.1：2件套异常精通+30；4件套作为实战参考"},
+	{SetName: "荆棘玫瑰", TwoStat: "DEF_PERCENT", TwoValue: 16, FourStat: "", FourValue: 0, Note: "3.1：2件套防御力+16%；4件套按初始防御阈值触发"},
 }
 
 // twoPiecePanelBonuses contains static 2-piece drive-disc effects that are visible
@@ -344,6 +474,8 @@ var twoPiecePanelBonuses = map[string][]StatValue{
 	"囚徒手记":   {{Type: "ICE_DMG", Value: 10}},
 	"呼啸沙龙":   {{Type: "WIND_DMG", Value: 10}},
 	"拂晓行纪":   {{Type: "ETHER_DMG", Value: 10}},
+	"谶羽之誓":   {{Type: "ANOMALY_PROFICIENCY", Value: 30}},
+	"荆棘玫瑰":   {{Type: "DEF_PERCENT", Value: 16}},
 }
 
 // fourPieceCombatBonuses contains stable, commonly-assumed in-combat bonuses used
@@ -357,6 +489,8 @@ var fourPieceCombatBonuses = map[string][]StatValue{
 	// 拂晓行纪：强化特殊技/终结技触发后的攻击力+10%按实战参考处理；
 	// 以太角色的4件套暴伤+30%由条件战斗加成函数按角色属性处理。
 	"拂晓行纪": {{Type: "ATK_PERCENT", Value: 10}},
+	// 谶羽之誓：前场触发后或位于后台时异常精通+50；流明异常伤害由条件函数单独展示。
+	"谶羽之誓": {{Type: "ANOMALY_PROFICIENCY", Value: 50}},
 }
 
 func main() {
@@ -369,27 +503,12 @@ func main() {
 		log.Printf("读取数据失败，将使用空库存: %v", err)
 		state = defaultState()
 	}
-	importToken, err := newScanImportToken()
-	if err != nil {
-		log.Fatalf("无法创建扫描导入安全令牌: %v", err)
-	}
-	srvState = serverState{state: state, storagePath: storagePath, importToken: importToken}
+	srvState = serverState{state: state, storagePath: storagePath}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/", handleIndex)
-	mux.HandleFunc("/api/state", handleState)
-	mux.HandleFunc("/api/storage-path", handleStoragePath)
-	mux.HandleFunc("/api/storage-folder", handleStorageFolder)
-	mux.HandleFunc("/api/optimize", handleOptimize)
-	mux.HandleFunc("/api/optimize/cancel", handleCancelOptimize)
-	mux.HandleFunc("/api/ocr", handleOCR)
-	mux.HandleFunc("/api/ocr/parse", handleOCRParse)
-	mux.HandleFunc("/api/scan/import/preview", handleScanImportPreview)
-	mux.HandleFunc("/api/scan/import/apply", handleScanImportApply)
-	mux.HandleFunc("/api/scan/external/start", handleExternalScannerStart)
-	mux.HandleFunc("/api/scan/external/status", handleExternalScannerStatus)
-	mux.HandleFunc("/api/scan/external/apply", handleExternalScannerApply)
-	mux.HandleFunc("/api/shutdown", handleShutdown)
+	mux, err := newAppMux(scannerIncluded())
+	if err != nil {
+		log.Fatalf("无法加载内置网页资源: %v", err)
+	}
 
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
@@ -398,7 +517,7 @@ func main() {
 	addr := listener.Addr().String()
 	url := "http://" + addr + "/"
 
-	fmt.Println("ZZZ Drive Optimizer v1.15 已启动")
+	fmt.Printf("ZZZ Drive Optimizer %s 已启动\n", releaseLabel())
 	fmt.Println("数据文件:", storagePath)
 	fmt.Println("浏览器地址:", url)
 	fmt.Println("关闭此窗口即可退出程序。")
@@ -417,6 +536,28 @@ func main() {
 	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		log.Fatalf("服务异常退出: %v", err)
 	}
+}
+
+func newAppMux(includeScanner bool) (*http.ServeMux, error) {
+	mux := http.NewServeMux()
+	webRoot, err := fs.Sub(webFiles, "web")
+	if err != nil {
+		return nil, err
+	}
+	mux.Handle("/assets/", http.FileServer(http.FS(webRoot)))
+	mux.HandleFunc("/", handleIndex)
+	mux.HandleFunc("/api/state", handleState)
+	mux.HandleFunc("/api/storage-path", handleStoragePath)
+	mux.HandleFunc("/api/storage-folder", handleStorageFolder)
+	mux.HandleFunc("/api/optimize", handleOptimize)
+	mux.HandleFunc("/api/optimize/cancel", handleCancelOptimize)
+	mux.HandleFunc("/api/ocr", handleOCR)
+	mux.HandleFunc("/api/ocr/parse", handleOCRParse)
+	if includeScanner {
+		mux.HandleFunc("/api/scanner/start", handleScannerStart)
+	}
+	mux.HandleFunc("/api/shutdown", handleShutdown)
+	return mux, nil
 }
 
 func appConfigDir() (string, error) {
@@ -616,11 +757,27 @@ func handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	page, err := webFiles.ReadFile("web/index.html")
+	if err != nil {
+		http.Error(w, "无法读取内置页面", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	srvState.mu.RLock()
-	page := strings.ReplaceAll(indexHTML, "__ZZZ_IMPORT_TOKEN__", srvState.importToken)
-	srvState.mu.RUnlock()
-	_, _ = w.Write([]byte(page))
+	_, _ = w.Write(renderIndexPage(page, releaseEdition))
+}
+
+func renderIndexPage(page []byte, edition string) []byte {
+	label := releaseLabelForEdition(edition)
+	scannerButton := ""
+	if scannerIncludedForEdition(edition) {
+		scannerButton = `<div class="scannerLaunchRow"><button id="startScannerBtn" class="scannerLaunchButton" type="button" title="打开后先点检测窗口，再点开始扫描">打开驱动盘扫描器</button></div>`
+	}
+	replacer := strings.NewReplacer(
+		"__APP_RELEASE__", label,
+		"<!--__SCANNER_BUTTON__-->", scannerButton,
+		"__SCANNER_AVAILABLE__", strconv.FormatBool(scannerIncludedForEdition(edition)),
+	)
+	return []byte(replacer.Replace(string(page)))
 }
 
 func handleState(w http.ResponseWriter, r *http.Request) {
@@ -685,6 +842,175 @@ func handleState(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Allow", "GET, POST")
 		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
 	}
+}
+
+func scannerBundleCandidates() []string {
+	candidates := []string{}
+	if configured := strings.TrimSpace(os.Getenv("ZZZ_SCANNER_BUNDLE_ROOT")); configured != "" {
+		candidates = append(candidates, filepath.Clean(configured))
+	}
+	if executable, err := os.Executable(); err == nil && strings.TrimSpace(executable) != "" {
+		candidates = append(candidates, filepath.Join(filepath.Dir(executable), "scanner"))
+	}
+	if workingDirectory, err := os.Getwd(); err == nil && strings.TrimSpace(workingDirectory) != "" {
+		for _, candidate := range []string{
+			filepath.Join(workingDirectory, "scanner"),
+			filepath.Join(workingDirectory, "..", "scanner"),
+		} {
+			duplicate := false
+			for _, existing := range candidates {
+				if sameStoragePath(candidate, existing) {
+					duplicate = true
+					break
+				}
+			}
+			if !duplicate {
+				candidates = append(candidates, filepath.Clean(candidate))
+			}
+		}
+	}
+	return candidates
+}
+
+func findScannerBundle() (string, error) {
+	for _, candidate := range scannerBundleCandidates() {
+		if info, err := os.Stat(filepath.Join(candidate, "ZZZ-Scanner.Next.exe")); err == nil && !info.IsDir() {
+			return filepath.Clean(candidate), nil
+		}
+	}
+	return "", errors.New("未找到随包扫描器。请确认 scanner 文件夹与配装器 EXE 位于同一目录，且文件夹内包含 ZZZ-Scanner.Next.exe")
+}
+
+func scannerBundleFile(root, relative string) (string, error) {
+	relative = filepath.Clean(filepath.FromSlash(relative))
+	if relative == "." || filepath.IsAbs(relative) {
+		return "", fmt.Errorf("扫描器清单包含非法路径 %q", relative)
+	}
+	full := filepath.Join(root, relative)
+	rel, err := filepath.Rel(root, full)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("扫描器清单路径越界 %q", relative)
+	}
+	return full, nil
+}
+
+func fileSHA256(path string) (string, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return "", err
+	}
+	defer file.Close()
+	hash := sha256.New()
+	if _, err := io.Copy(hash, file); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func verifyScannerBundle(root string) (scannerBundleManifest, error) {
+	var manifest scannerBundleManifest
+	manifestPath := filepath.Join(root, "SCANNER_BUNDLE.json")
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return manifest, fmt.Errorf("无法读取扫描器清单: %w", err)
+	}
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return manifest, fmt.Errorf("扫描器清单格式错误: %w", err)
+	}
+	if strings.TrimSpace(manifest.Version) == "" || len(manifest.Files) == 0 {
+		return manifest, errors.New("扫描器清单缺少版本或文件校验信息")
+	}
+	for relative, expected := range manifest.Files {
+		path, err := scannerBundleFile(root, relative)
+		if err != nil {
+			return manifest, err
+		}
+		actual, err := fileSHA256(path)
+		if err != nil {
+			return manifest, fmt.Errorf("扫描器文件缺失或无法读取 %s: %w", relative, err)
+		}
+		if !strings.EqualFold(actual, strings.TrimSpace(expected)) {
+			return manifest, fmt.Errorf("扫描器文件校验失败 %s", relative)
+		}
+	}
+	return manifest, nil
+}
+
+func handleScannerStart(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		w.Header().Set("Allow", "POST")
+		writeError(w, http.StatusMethodNotAllowed, "method not allowed")
+		return
+	}
+	if runtime.GOOS != "windows" {
+		writeError(w, http.StatusBadRequest, "随包扫描器仅支持 Windows x64")
+		return
+	}
+
+	scannerRuntime.Lock()
+	if scannerRuntime.cmd != nil {
+		pid := scannerRuntime.cmd.Process.Pid
+		scannerRuntime.Unlock()
+		writeJSON(w, map[string]any{"ok": true, "alreadyRunning": true, "pid": pid})
+		return
+	}
+
+	root, err := findScannerBundle()
+	if err != nil {
+		scannerRuntime.Unlock()
+		writeError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	manifest, err := verifyScannerBundle(root)
+	if err != nil {
+		scannerRuntime.Unlock()
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	configDir, err := appConfigDir()
+	if err != nil {
+		scannerRuntime.Unlock()
+		writeError(w, http.StatusInternalServerError, "无法创建扫描结果目录: "+err.Error())
+		return
+	}
+	outputRoot := filepath.Join(configDir, "scanner-outputs")
+	if err := os.MkdirAll(outputRoot, 0755); err != nil {
+		scannerRuntime.Unlock()
+		writeError(w, http.StatusInternalServerError, "无法创建扫描结果目录: "+err.Error())
+		return
+	}
+
+	executable := filepath.Join(root, "ZZZ-Scanner.Next.exe")
+	cmd := exec.Command(executable)
+	cmd.Dir = root
+	cmd.Env = append(os.Environ(), "ZZZ_SCANNER_OUTPUT_ROOT="+outputRoot)
+	if err := cmd.Start(); err != nil {
+		scannerRuntime.Unlock()
+		writeError(w, http.StatusInternalServerError, "扫描器启动失败: "+err.Error())
+		return
+	}
+	scannerRuntime.cmd = cmd
+	scannerRuntime.Unlock()
+
+	go func(started *exec.Cmd) {
+		err := started.Wait()
+		scannerRuntime.Lock()
+		if scannerRuntime.cmd == started {
+			scannerRuntime.cmd = nil
+		}
+		scannerRuntime.Unlock()
+		if err != nil {
+			log.Printf("扫描器进程已退出: %v", err)
+		}
+	}(cmd)
+
+	writeJSON(w, map[string]any{
+		"ok":              true,
+		"alreadyRunning":  false,
+		"pid":             cmd.Process.Pid,
+		"scannerVersion":  manifest.Version,
+		"outputDirectory": outputRoot,
+	})
 }
 
 func chooseStorageFolder(initial string) (string, bool, error) {
@@ -1409,7 +1735,7 @@ func uniqueOCRSlotForMainStat(statType string) (int, bool) {
 		return 3, true
 	case "CRIT_RATE", "CRIT_DMG", "ANOMALY_PROFICIENCY":
 		return 4, true
-	case "PEN_RATIO", "FIRE_DMG", "ICE_DMG", "ELECTRIC_DMG", "PHYSICAL_DMG", "ETHER_DMG", "WIND_DMG":
+	case "PEN_RATIO", "FIRE_DMG", "ICE_DMG", "ELECTRIC_DMG", "PHYSICAL_DMG", "ETHER_DMG", "WIND_DMG", "LUMIFLUX_DMG":
 		return 5, true
 	case "ANOMALY_MASTERY", "ENERGY_REGEN", "IMPACT":
 		return 6, true
@@ -1617,6 +1943,8 @@ func ocrStatLabelMatchesTypeExactly(statType, raw string) bool {
 		return strings.Contains(han, "以太属性伤害") || strings.Contains(han, "以太伤害")
 	case "WIND_DMG":
 		return strings.Contains(han, "风属性伤害") || strings.Contains(han, "风伤害")
+	case "LUMIFLUX_DMG":
+		return strings.Contains(han, "流明属性伤害") || strings.Contains(han, "流明伤害")
 	case "IMPACT":
 		return strings.Contains(han, "冲击力")
 	case "HP_FLAT", "HP_PERCENT":
@@ -1647,6 +1975,8 @@ func statCNName(statType string) string {
 		return "音擎/核心基础攻击力"
 	case "BASE_HP":
 		return "核心基础生命值"
+	case "BASE_DEF":
+		return "核心基础防御力"
 	case "SHEER_FORCE", "SHEER_FORCE_FLAT":
 		return "贯穿力"
 	case "CRIT_RATE":
@@ -1677,6 +2007,8 @@ func statCNName(statType string) string {
 		return "以太属性伤害"
 	case "WIND_DMG":
 		return "风属性伤害"
+	case "LUMIFLUX_DMG":
+		return "流明属性伤害"
 	}
 	return statType
 }
@@ -2238,7 +2570,7 @@ func ocrDefaultMainStatValue(statType string) (float64, bool) {
 		return 316, true
 	case "DEF_FLAT":
 		return 184, true
-	case "HP_PERCENT", "ATK_PERCENT", "FIRE_DMG", "ICE_DMG", "ELECTRIC_DMG", "PHYSICAL_DMG", "ETHER_DMG", "WIND_DMG", "ANOMALY_MASTERY":
+	case "HP_PERCENT", "ATK_PERCENT", "FIRE_DMG", "ICE_DMG", "ELECTRIC_DMG", "PHYSICAL_DMG", "ETHER_DMG", "WIND_DMG", "LUMIFLUX_DMG", "ANOMALY_MASTERY":
 		return 30, true
 	case "DEF_PERCENT", "CRIT_DMG":
 		return 48, true
@@ -2317,6 +2649,9 @@ func statTypeFromOCRLabel(label string, percent bool) string {
 	}
 	if strings.Contains(han, "风属性伤害") || strings.Contains(han, "风伤害") {
 		return "WIND_DMG"
+	}
+	if strings.Contains(han, "流明属性伤害") || strings.Contains(han, "流明伤害") {
+		return "LUMIFLUX_DMG"
 	}
 	if strings.Contains(han, "穿透率") {
 		return "PEN_RATIO"
@@ -2645,7 +2980,7 @@ func optimize(ctx context.Context, req OptimizeRequest) OptimizeResponse {
 		}
 	}
 	// 用户界面目前没有自定义词条权重输入，所以服务端按角色职业强制采用
-	// 角色有效词条口径，避免“最高总词条”仍然过度偏向纯双暴。
+	// 角色加权排序口径，避免“最高有效词条”策略仍然过度偏向纯双暴。
 	// 强攻：暴击率 / 暴击伤害 / 攻击力% 为核心有效词条；
 	// 命破：暴击率 / 暴击伤害 / 生命值% 为核心有效词条。
 	req.WantedWeights = roleEffectiveWeights(req.RoleSystem, req.Mode, req.WantedWeights)
@@ -3030,6 +3365,15 @@ func roleEffectiveWeights(roleSystem string, mode string, current map[string]flo
 			"ATK_FLAT": 0.2, "HP_FLAT": 0.15,
 		}
 	}
+	if role == "DEFENSE" {
+		return map[string]float64{
+			"DEF_PERCENT": 1, "DEF_FLAT": 0.35,
+			"HP_PERCENT": 0.8, "HP_FLAT": 0.2,
+			"ATK_PERCENT": 0.75, "ATK_FLAT": 0.2,
+			"IMPACT": 0.8, "ENERGY_REGEN": 0.7,
+			"ANOMALY_PROFICIENCY": 0.35,
+		}
+	}
 	if role == "SUPPORT" {
 		return map[string]float64{
 			"ENERGY_REGEN": 1, "ATK_PERCENT": 0.9,
@@ -3072,6 +3416,16 @@ func thresholdDiagnosticText(res OptimizeResult, req OptimizeRequest) string {
 			}
 		} else if res.FinalHP+1e-9 < req.TargetFinalHP {
 			parts = append(parts, fmt.Sprintf("生命值 %.0f / 期望 %.0f，差 %.0f", res.FinalHP, req.TargetFinalHP, math.Max(0, req.TargetFinalHP-res.FinalHP)))
+		}
+	}
+	if req.TargetFinalDefense > 0 {
+		if roleIsUtility(req.RoleSystem) || strings.EqualFold(strings.TrimSpace(req.Mode), "UTILITY_BALANCE") {
+			tol := utilityTargetTolerance(req.TargetFinalDefense)
+			if res.FinalDefense+tol+1e-9 < req.TargetFinalDefense || res.FinalDefense-tol-1e-9 > req.TargetFinalDefense {
+				parts = append(parts, fmt.Sprintf("防御力 %.0f / 期望 %.0f，超出目标窗口 %.0f", res.FinalDefense, req.TargetFinalDefense, tol))
+			}
+		} else if res.FinalDefense+1e-9 < req.TargetFinalDefense {
+			parts = append(parts, fmt.Sprintf("防御力 %.0f / 期望 %.0f，差 %.0f", res.FinalDefense, req.TargetFinalDefense, math.Max(0, req.TargetFinalDefense-res.FinalDefense)))
 		}
 	}
 	ap := res.CombatStats["ANOMALY_PROFICIENCY"]
@@ -3175,7 +3529,7 @@ func roleIsStun(role string) bool {
 
 func roleIsUtility(role string) bool {
 	role = strings.ToUpper(strings.TrimSpace(role))
-	return role == "SUPPORT" || role == "STUN"
+	return role == "SUPPORT" || role == "STUN" || role == "DEFENSE"
 }
 
 func utilityTargetTolerance(target float64) float64 {
@@ -3214,7 +3568,7 @@ func normalizedStrictGap(actual, target, unit float64) float64 {
 	return math.Abs(actual-target) / unit
 }
 
-func strictTargetPenalty(resStats map[string]float64, panelCritRate float64, panelCritDmg float64, finalATK float64, finalHP float64, ap float64, req OptimizeRequest) (float64, []string) {
+func strictTargetPenalty(resStats map[string]float64, panelCritRate float64, panelCritDmg float64, finalATK float64, finalHP float64, finalDEF float64, ap float64, req OptimizeRequest) (float64, []string) {
 	baseATKForRoll := req.BaseATK + resStats["BASE_ATK"]
 	if baseATKForRoll <= 0 {
 		baseATKForRoll = math.Max(1, finalATK)
@@ -3222,6 +3576,10 @@ func strictTargetPenalty(resStats map[string]float64, panelCritRate float64, pan
 	baseHPForRoll := req.BaseHP + resStats["BASE_HP"]
 	if baseHPForRoll <= 0 {
 		baseHPForRoll = math.Max(1, finalHP)
+	}
+	baseDEFForRoll := req.BaseDEF + resStats["BASE_DEF"]
+	if baseDEFForRoll <= 0 {
+		baseDEFForRoll = math.Max(1, finalDEF)
 	}
 	items := []struct {
 		label  string
@@ -3234,6 +3592,7 @@ func strictTargetPenalty(resStats map[string]float64, panelCritRate float64, pan
 		{"暴击伤害", panelCritDmg, effectiveTargetCritDmg(req), 4.8, 1000000},
 		{"攻击力", finalATK, effectiveTargetFinalAttack(req), math.Max(19, baseATKForRoll*0.03), 10000},
 		{"生命值", finalHP, req.TargetFinalHP, math.Max(112, baseHPForRoll*0.03), 100},
+		{"防御力", finalDEF, req.TargetFinalDefense, math.Max(15, baseDEFForRoll*0.048), 10},
 		{"异常精通", ap, req.TargetAnomalyProficiency, 9, 1},
 	}
 	penalty := 0.0
@@ -3279,6 +3638,79 @@ func critTargetPenalty(panelCritRate float64, targetCritRate float64) (shortfall
 	return shortfall, overflow, penalty
 }
 
+func normalizedAgentName(name string) string {
+	name = strings.TrimSpace(name)
+	name = strings.ReplaceAll(name, "·", "")
+	name = strings.ReplaceAll(name, " ", "")
+	name = strings.ReplaceAll(name, "星间雅", "星见雅")
+	return name
+}
+
+func agentNameContains(name string, parts ...string) bool {
+	name = normalizedAgentName(name)
+	for _, part := range parts {
+		if strings.Contains(name, normalizedAgentName(part)) {
+			return true
+		}
+	}
+	return false
+}
+
+func boolStatSet(keys ...string) map[string]bool {
+	m := map[string]bool{}
+	for _, key := range keys {
+		key = strings.TrimSpace(key)
+		if key != "" {
+			m[key] = true
+		}
+	}
+	return m
+}
+
+func gameEffectiveStatSet(req OptimizeRequest) map[string]bool {
+	// v1.18：继续按 Pro v1.16 校准结论，将游戏内“有效副词条数量”
+	// 按角色推荐有效属性逐档计数，
+	// 与配装器内部用于排序的加权词条不同。这里保留排序权重不变，
+	// 但新增一个按游戏面板口径显示的无权重有效词条数。
+	name := normalizedAgentName(req.CharacterName)
+	if agentNameContains(name, "南宫羽", "爱芮", "维琳娜") {
+		return boolStatSet("ANOMALY_PROFICIENCY", "ATK_PERCENT")
+	}
+	if agentNameContains(name, "仪玄") {
+		return boolStatSet("CRIT_RATE", "CRIT_DMG", "HP_PERCENT")
+	}
+	role := strings.ToUpper(strings.TrimSpace(req.RoleSystem))
+	mode := strings.ToUpper(strings.TrimSpace(req.Mode))
+	if isAnomalyMode(mode) || role == "ANOMALY" {
+		return boolStatSet("ANOMALY_PROFICIENCY", "ATK_PERCENT")
+	}
+	if role == "RUPTURE" {
+		return boolStatSet("CRIT_RATE", "CRIT_DMG", "HP_PERCENT")
+	}
+	if role == "ATTACK" || role == "STRONG" {
+		return boolStatSet("CRIT_RATE", "CRIT_DMG", "ATK_PERCENT")
+	}
+	if role == "STUN" {
+		return boolStatSet("CRIT_RATE", "CRIT_DMG", "ATK_PERCENT")
+	}
+	if role == "DEFENSE" {
+		if agentNameContains(name, "本") {
+			return boolStatSet("DEF_PERCENT", "HP_PERCENT")
+		}
+		if agentNameContains(name, "凯撒") {
+			return boolStatSet("IMPACT", "HP_PERCENT", "ATK_PERCENT")
+		}
+		if agentNameContains(name, "赛斯", "潘引壶") {
+			return boolStatSet("ATK_PERCENT", "ENERGY_REGEN", "HP_PERCENT")
+		}
+		return boolStatSet("DEF_PERCENT", "HP_PERCENT", "ATK_PERCENT")
+	}
+	if role == "SUPPORT" {
+		return boolStatSet("ATK_PERCENT", "HP_PERCENT", "CRIT_RATE", "CRIT_DMG", "ANOMALY_PROFICIENCY")
+	}
+	return boolStatSet("CRIT_RATE", "CRIT_DMG", "ATK_PERCENT")
+}
+
 func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffect) (OptimizeResult, bool) {
 	stats := map[string]float64{}
 	for statType, value := range req.ExtraStats {
@@ -3290,6 +3722,8 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 	setCounts := map[string]int{}
 	effWords := 0.0
 	weightedWords := 0.0
+	gameEffectiveWords := 0.0
+	gameEffectiveStats := gameEffectiveStatSet(req)
 
 	_ = effects // v3 does not calculate drive-disc set effects.
 	for _, d := range build {
@@ -3299,6 +3733,9 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 		for _, s := range discWordStats(d) {
 			if words := statWords(s); words > 0 {
 				effWords += words
+				if gameEffectiveStats[s.Type] {
+					gameEffectiveWords += words
+				}
 				if len(req.WantedWeights) == 0 {
 					weightedWords += words
 				} else if req.WantedWeights[s.Type] > 0 {
@@ -3335,8 +3772,10 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 	critDmg := req.BaseCritDmg + req.ExtraCritDmg + combatStats["CRIT_DMG"]
 	finalATK := calcFinalAttack(req.BaseATK, stats["BASE_ATK"], stats["ATK_PERCENT"], stats["ATK_FLAT"])
 	finalHP := calcFinalHP(req.BaseHP, stats["BASE_HP"], stats["HP_PERCENT"], stats["HP_FLAT"])
+	finalDEF := calcFinalDefense(req.BaseDEF, stats["BASE_DEF"], stats["DEF_PERCENT"], stats["DEF_FLAT"])
 	combatFinalATK := calcFinalAttack(req.BaseATK, combatStats["BASE_ATK"], combatStats["ATK_PERCENT"], combatStats["ATK_FLAT"])
 	combatFinalHP := calcFinalHP(req.BaseHP, combatStats["BASE_HP"], combatStats["HP_PERCENT"], combatStats["HP_FLAT"])
+	combatFinalDEF := calcFinalDefense(req.BaseDEF, combatStats["BASE_DEF"], combatStats["DEF_PERCENT"], combatStats["DEF_FLAT"])
 	sheerForce := 0.0
 	if strings.EqualFold(strings.TrimSpace(req.RoleSystem), "RUPTURE") || strings.EqualFold(strings.TrimSpace(req.Mode), "RUPTURE_SHEER") {
 		hpToSheerRatio := req.HPToSheerRatio
@@ -3379,11 +3818,11 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 	strictPlan := isStrictTargetMode(req.Mode)
 	utilityPenalty := 0.0
 
-	// v1.12: all roles share the same five visible target fields. A value of 0
+	// v1.20: all roles share the same six visible target fields. A value of 0
 	// means the field is not used. In normal strategies, CRIT Rate remains a
 	// ±1-roll target window; Anomaly Proficiency is a soft lower bound; Crit DMG is
 	// a lower bound; HP/ATK are lower bounds for damage roles and target windows for
-	// Support/Stun utility planning. In strict target mode, these fields are not
+	// Support/Stun/Defense utility planning. In strict target mode, these fields are not
 	// hard filters: every non-zero target becomes a high-priority closeness score.
 	if !strictPlan {
 		if req.TargetCritRate > 0 {
@@ -3410,6 +3849,17 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 				}
 				utilityPenalty += p
 			} else if finalHP+1e-9 < req.TargetFinalHP {
+				return OptimizeResult{}, false
+			}
+		}
+		if req.TargetFinalDefense > 0 {
+			if utilityPlan {
+				_, _, p, ok := targetWindowPenalty(finalDEF, req.TargetFinalDefense, utilityTargetTolerance(req.TargetFinalDefense))
+				if !ok {
+					return OptimizeResult{}, false
+				}
+				utilityPenalty += p
+			} else if finalDEF+1e-9 < req.TargetFinalDefense {
 				return OptimizeResult{}, false
 			}
 		}
@@ -3441,7 +3891,7 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 	strictPenalty := 0.0
 	strictParts := []string{}
 	if strictPlan {
-		strictPenalty, strictParts = strictTargetPenalty(stats, panelCritRate, panelCritDmg, finalATK, finalHP, ap, req)
+		strictPenalty, strictParts = strictTargetPenalty(stats, panelCritRate, panelCritDmg, finalATK, finalHP, finalDEF, ap, req)
 	}
 	score := scoreDamageIndex*critFitFactor + scoreCritDmg*2 + weightedWords*req.WordCoef
 	switch mode {
@@ -3466,19 +3916,20 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 	case "ANOMALY_WORDS":
 		score = weightedWords + ap*0.0001 + atkPercent*0.0001
 	case "STRICT_TARGETS", "STRICT_TARGET":
-		// Sort primarily by how close the five user-entered fields are to their
+		// Sort primarily by how close the user-entered fields are to their
 		// targets in display order. Damage and words are only tiebreakers once target
 		// fit is decided.
-		score = -strictPenalty*1000000000 + scoreDamageIndex*critFitFactor*80 + weightedWords*180 + panelCritDmg*120 + finalATK*3 + finalHP*0.03 + ap*15
+		score = -strictPenalty*1000000000 + scoreDamageIndex*critFitFactor*80 + weightedWords*180 + panelCritDmg*120 + finalATK*3 + finalHP*0.03 + finalDEF*0.3 + ap*15
 	case "UTILITY_BALANCE":
-		// Support/Stun thresholds are target windows rather than one-sided floors.
+		// Support/Stun/Defense thresholds are target windows rather than one-sided floors.
 		// After matching selected targets, sort by useful words and visible panel value.
-		score = weightedWords*100000 + panelCritDmg*180 + panelCritRate*140 + finalATK*6 + finalHP*0.25 + stats["IMPACT"]*1200 + stats["ENERGY_REGEN"]*6000 - utilityPenalty*900000
+		score = weightedWords*100000 + panelCritDmg*180 + panelCritRate*140 + finalATK*6 + finalHP*0.25 + finalDEF*4 + stats["IMPACT"]*1200 + stats["ENERGY_REGEN"]*6000 - utilityPenalty*900000
 	}
 
 	buildCopy := append([]Disc{}, build...)
 	sort.SliceStable(buildCopy, func(i, j int) bool { return buildCopy[i].Slot < buildCopy[j].Slot })
 	goalText := critGoalStatusText(panelCritRate, req.TargetCritRate)
+	displayWords := gameEffectiveWords
 
 	res := OptimizeResult{
 		Score:               round(score, 4),
@@ -3494,10 +3945,13 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 		CritFitFactor:       round(math.Max(0, 1-critPenalty), 4),
 		EffectiveWords:      round(effWords, 3),
 		WeightedWords:       round(weightedWords, 3),
+		GameEffectiveWords:  round(gameEffectiveWords, 3),
 		FinalAttack:         round(finalATK, 3),
 		FinalHP:             round(finalHP, 3),
+		FinalDefense:        round(finalDEF, 3),
 		CombatFinalAttack:   round(combatFinalATK, 3),
 		CombatFinalHP:       round(combatFinalHP, 3),
+		CombatFinalDefense:  round(combatFinalDEF, 3),
 		InitialEnergyRegen:  round(initialEnergyRegen, 3),
 		FinalAnomalyMastery: round(finalAnomalyMastery, 3),
 		SheerForce:          round(sheerForce, 3),
@@ -3511,38 +3965,42 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 	switch mode {
 	case "MAX_CD":
 		if strings.EqualFold(strings.TrimSpace(req.RoleSystem), "ATTACK") || strings.EqualFold(strings.TrimSpace(req.RoleSystem), "STRONG") {
-			res.Reason = fmt.Sprintf("强攻模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；面板暴伤 %.1f%%；优先总暴伤，总攻击 %.0f，总词条 %.2f。", goalText, critRate, panelCritDmg, finalATK, weightedWords)
+			res.Reason = fmt.Sprintf("强攻模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；面板暴伤 %.1f%%；优先总暴伤，总攻击 %.0f，有效词条 %.2f。", goalText, critRate, panelCritDmg, finalATK, displayWords)
 		} else if strings.EqualFold(strings.TrimSpace(req.RoleSystem), "RUPTURE") {
-			res.Reason = fmt.Sprintf("命破模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；面板暴伤 %.1f%%；优先总暴伤，贯穿力 %.0f，总词条 %.2f，伤害指数 %.0f。", goalText, critRate, panelCritDmg, sheerForce, weightedWords, damageIndex)
+			res.Reason = fmt.Sprintf("命破模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；面板暴伤 %.1f%%；优先总暴伤，贯穿力 %.0f，有效词条 %.2f，伤害指数 %.0f。", goalText, critRate, panelCritDmg, sheerForce, displayWords, damageIndex)
 		} else {
-			res.Reason = fmt.Sprintf("%s；本模式优先总暴伤，面板暴伤 %.1f%%，总词条 %.2f。", goalText, panelCritDmg, weightedWords)
+			res.Reason = fmt.Sprintf("%s；本模式优先总暴伤，面板暴伤 %.1f%%，有效词条 %.2f。", goalText, panelCritDmg, displayWords)
 		}
 	case "MAX_WORDS":
 		if strings.EqualFold(strings.TrimSpace(req.RoleSystem), "ATTACK") || strings.EqualFold(strings.TrimSpace(req.RoleSystem), "STRONG") {
-			res.Reason = fmt.Sprintf("强攻模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；优先总词条，总词条 %.2f，面板暴伤 %.1f%%，总攻击 %.0f。", goalText, critRate, weightedWords, panelCritDmg, finalATK)
+			res.Reason = fmt.Sprintf("强攻模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；优先有效词条，有效词条 %.2f，面板暴伤 %.1f%%，总攻击 %.0f。", goalText, critRate, displayWords, panelCritDmg, finalATK)
 		} else if strings.EqualFold(strings.TrimSpace(req.RoleSystem), "RUPTURE") {
-			res.Reason = fmt.Sprintf("命破模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；优先总词条，总词条 %.2f，面板暴伤 %.1f%%，贯穿力 %.0f，伤害指数 %.0f。", goalText, critRate, weightedWords, panelCritDmg, sheerForce, damageIndex)
+			res.Reason = fmt.Sprintf("命破模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；优先有效词条，有效词条 %.2f，面板暴伤 %.1f%%，贯穿力 %.0f，伤害指数 %.0f。", goalText, critRate, displayWords, panelCritDmg, sheerForce, damageIndex)
 		} else {
-			res.Reason = fmt.Sprintf("%s；本模式优先总词条，总词条 %.2f，面板暴伤 %.1f%%。", goalText, weightedWords, panelCritDmg)
+			res.Reason = fmt.Sprintf("%s；本模式优先有效词条，有效词条 %.2f，面板暴伤 %.1f%%。", goalText, displayWords, panelCritDmg)
 		}
 	case "RUPTURE_SHEER":
 		res.Reason = fmt.Sprintf("命破模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；按贯穿力×暴击期望综合排序，伤害指数 %.0f，贯穿力 %.0f，生命 %.0f，攻击 %.0f，面板暴伤 %.1f%%。", goalText, critRate, damageIndex, sheerForce, finalHP, finalATK, panelCritDmg)
 	case "ANOMALY_AP":
-		res.Reason = fmt.Sprintf("异常模式：优先异常精通，异常精通 %.1f，攻击力 %.1f%%，有效词条 %.2f。%s", ap, atkPercent, weightedWords, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
+		res.Reason = fmt.Sprintf("异常模式：优先异常精通，异常精通 %.1f，攻击力 %.1f%%，有效词条 %.2f。%s", ap, atkPercent, displayWords, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
 	case "ANOMALY_ATK":
-		res.Reason = fmt.Sprintf("异常模式：优先攻击力百分比，攻击力 %.1f%%，异常精通 %.1f，有效词条 %.2f。%s", atkPercent, ap, weightedWords, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
+		res.Reason = fmt.Sprintf("异常模式：优先攻击力百分比，攻击力 %.1f%%，异常精通 %.1f，有效词条 %.2f。%s", atkPercent, ap, displayWords, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
 	case "ANOMALY_WORDS":
-		res.Reason = fmt.Sprintf("异常模式：优先综合词条，异常有效词条 %.2f，异常精通 %.1f，攻击力 %.1f%%。%s", weightedWords, ap, atkPercent, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
+		res.Reason = fmt.Sprintf("异常模式：优先综合词条，有效词条 %.2f，异常精通 %.1f，攻击力 %.1f%%。%s", displayWords, ap, atkPercent, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
 	case "STRICT_TARGETS", "STRICT_TARGET":
 		if len(strictParts) > 0 {
-			res.Reason = fmt.Sprintf("严格指标模式：按用户填写属性顺序优先贴近目标；%s。完全贴近不可达时，自动按约 1 个副词条为单位向上/向下寻找最近方案。伤害指数 %.0f，总词条 %.2f。", strings.Join(strictParts, "；"), damageIndex, weightedWords)
+			res.Reason = fmt.Sprintf("严格指标模式：按用户填写属性顺序优先贴近目标；%s。完全贴近不可达时，自动按约 1 个副词条为单位向上/向下寻找最近方案。伤害指数 %.0f，有效词条 %.2f。", strings.Join(strictParts, "；"), damageIndex, displayWords)
 		} else {
-			res.Reason = fmt.Sprintf("严格指标模式：当前未填写具体目标，按综合输出和词条作为兜底排序；伤害指数 %.0f，总词条 %.2f。", damageIndex, weightedWords)
+			res.Reason = fmt.Sprintf("严格指标模式：当前未填写具体目标，按综合输出和词条作为兜底排序；伤害指数 %.0f，有效词条 %.2f。", damageIndex, displayWords)
 		}
 	case "UTILITY_BALANCE":
-		res.Reason = fmt.Sprintf("%s模式：按已设置的暴击率/生命值/攻击力目标窗口筛选，达标附近优先；总攻击 %.0f，生命 %.0f，面板暴击率 %.1f%%，总词条 %.2f。", map[bool]string{true: "击破", false: "辅助"}[roleIsStun(req.RoleSystem)], finalATK, finalHP, panelCritRate, weightedWords)
+		roleLabel := map[string]string{"STUN": "击破", "DEFENSE": "防护", "SUPPORT": "辅助"}[strings.ToUpper(strings.TrimSpace(req.RoleSystem))]
+		if roleLabel == "" {
+			roleLabel = "综合"
+		}
+		res.Reason = fmt.Sprintf("%s模式：按已设置的暴击率/生命值/防御力/攻击力目标窗口筛选，达标附近优先；总攻击 %.0f，生命 %.0f，防御 %.0f，面板暴击率 %.1f%%，有效词条 %.2f。", roleLabel, finalATK, finalHP, finalDEF, panelCritRate, displayWords)
 	default:
-		res.Reason = fmt.Sprintf("综合分 = 面板暴伤 %.1f + 总词条 %.2f × %.2f - 面板暴击率溢出 %.1f × %.2f。", panelCritDmg, weightedWords, req.WordCoef, overflow, req.OverflowPenalty)
+		res.Reason = fmt.Sprintf("综合分 = 面板暴伤 %.1f + 有效词条 %.2f × %.2f - 面板暴击率溢出 %.1f × %.2f。", panelCritDmg, displayWords, req.WordCoef, overflow, req.OverflowPenalty)
 	}
 	return res, true
 }
@@ -3671,6 +4129,11 @@ func calcFinalHP(baseValue float64, baseBonus float64, percentBonus float64, add
 	return math.Ceil(calcFinalStatRaw(baseValue, baseBonus, percentBonus, additiveBonus) - 1e-9)
 }
 
+func calcFinalDefense(baseValue float64, baseBonus float64, percentBonus float64, additiveBonus float64) float64 {
+	// Defense follows the integer display used by the in-game agent details panel.
+	return math.Floor(calcFinalStatRaw(baseValue, baseBonus, percentBonus, additiveBonus) + 1e-9)
+}
+
 func cloneStatMap(src map[string]float64) map[string]float64 {
 	out := map[string]float64{}
 	for k, v := range src {
@@ -3711,6 +4174,8 @@ func elementDamageStatKey(element string) string {
 		return "ETHER_DMG"
 	case "WIND":
 		return "WIND_DMG"
+	case "LUMIFLUX", "LUMEN":
+		return "LUMIFLUX_DMG"
 	default:
 		return ""
 	}
@@ -3724,7 +4189,7 @@ func combatDamageBonusPercent(stats map[string]float64, element string) float64 
 	if key := elementDamageStatKey(element); key != "" {
 		return total + stats[key]
 	}
-	for _, key := range []string{"FIRE_DMG", "ICE_DMG", "ELECTRIC_DMG", "PHYSICAL_DMG", "ETHER_DMG", "WIND_DMG"} {
+	for _, key := range []string{"FIRE_DMG", "ICE_DMG", "ELECTRIC_DMG", "PHYSICAL_DMG", "ETHER_DMG", "WIND_DMG", "LUMIFLUX_DMG"} {
 		total += stats[key]
 	}
 	return total
@@ -3755,7 +4220,7 @@ func applyTwoPiecePanelBonuses(stats map[string]float64, setCounts map[string]in
 }
 
 func applyConditionalFourPiecePanelBonuses(stats map[string]float64, setCounts map[string]int, element string) {
-	// v1.15：角色详情页面板只计入角色成长/核心、音擎基础与高级属性、驱动盘主副属性、2件套静态效果。
+	// v1.18：继续按 Pro 校准口径，角色详情页面板只计入角色成长/核心、音擎基础与高级属性、驱动盘主副属性、2件套静态效果。
 	// 4件套效果即使文字条件看似常驻，也统一放入实战参考，避免与游戏内“代理人信息”页面不一致。
 	_ = stats
 	_ = setCounts
@@ -3765,6 +4230,10 @@ func applyConditionalFourPiecePanelBonuses(stats map[string]float64, setCounts m
 func applyConditionalFourPieceCombatBonuses(stats map[string]float64, setCounts map[string]int, element string) {
 	if setCounts[canonicalSetName("拂晓行纪")] >= 4 && strings.EqualFold(strings.TrimSpace(element), "ETHER") {
 		addStat(stats, StatValue{Type: "CRIT_DMG", Value: 30})
+	}
+	if setCounts[canonicalSetName("谶羽之誓")] >= 4 && (strings.EqualFold(strings.TrimSpace(element), "LUMIFLUX") || strings.EqualFold(strings.TrimSpace(element), "LUMEN")) {
+		// 仅作为实战参考展示，不并入通用伤害指数，避免把“属性异常伤害”误算成全部流明伤害。
+		addStat(stats, StatValue{Type: "ANOMALY_DMG_BONUS", Value: 15})
 	}
 }
 
