@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ZZZ Drive Optimizer v1.15｜绝区零驱动盘配装器</title>
+  <title>ZZZ Drive Optimizer __APP_RELEASE__｜绝区零驱动盘配装器</title>
   <style>
     :root {
       --bg: #0f1117;
@@ -72,8 +72,9 @@
     .grid.cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .grid.cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); }
     .grid.cols-5 { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+    .grid.cols-6 { grid-template-columns: repeat(6, minmax(0, 1fr)); }
     @media (max-width: 900px) {
-      .grid.cols-2, .grid.cols-3, .grid.cols-4, .grid.cols-5 { grid-template-columns: 1fr; }
+      .grid.cols-2, .grid.cols-3, .grid.cols-4, .grid.cols-5, .grid.cols-6 { grid-template-columns: 1fr; }
       .titlebar { align-items: flex-start; flex-direction: column; }
     }
     label { color: var(--muted); font-size: 13px; display: block; }
@@ -195,11 +196,163 @@
       background: rgba(255,255,255,.018);
       font-size: 13px;
     }
-    .specialText { color: var(--danger); font-weight: 800; }
-    select.specialSelected { color: var(--text); border-color: var(--danger); box-shadow: 0 0 0 2px rgba(255,141,141,.12); }
-    select.specialSelected option { color: var(--text); font-weight: 400; }
     .tableWrap { width: 100%; overflow: auto; border: 1px solid var(--border); border-radius: 12px; }
     .inventoryTableWrap { max-height: 416px; overflow: auto; }
+    .inventoryViewToolbar { margin-top: 12px; justify-content: flex-end; }
+    .inventoryViewToolbar button.active { color: #10131a; background: var(--accent); border-color: var(--accent); font-weight: 800; }
+    .inventoryCardsLayout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(286px, 336px); gap: 14px; margin-top: 12px; align-items: start; }
+    .inventoryCardGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      grid-auto-rows: 192px;
+      gap: 8px;
+      min-width: 0;
+      max-height: 798px;
+      padding: 3px 6px 3px 2px;
+      overflow-x: hidden;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+      scrollbar-color: rgba(138,212,255,.68) rgba(15,19,32,.72);
+      scrollbar-width: thin;
+    }
+    .inventoryCardGrid::-webkit-scrollbar { width: 10px; }
+    .inventoryCardGrid::-webkit-scrollbar-track { background: rgba(15,19,32,.72); border-radius: 999px; }
+    .inventoryCardGrid::-webkit-scrollbar-thumb { background: rgba(138,212,255,.58); border: 2px solid rgba(15,19,32,.72); border-radius: 999px; }
+    .inventoryCardGrid::-webkit-scrollbar-thumb:hover { background: rgba(138,212,255,.82); }
+    .inventoryDiscCard {
+      position: relative;
+      min-width: 0;
+      min-height: 192px;
+      height: 192px;
+      padding: 36px 8px 9px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: linear-gradient(165deg, rgba(36,42,56,.98), rgba(13,17,27,.98));
+      color: var(--text);
+      cursor: pointer;
+      overflow: hidden;
+      text-align: center;
+      box-shadow: 0 5px 16px rgba(0,0,0,.18);
+      transition: border-color .15s ease, transform .12s ease, box-shadow .15s ease;
+    }
+    .inventoryDiscCard::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: radial-gradient(circle at 50% 42%, rgba(138,212,255,.10), transparent 56%); }
+    .inventoryDiscCard:hover { border-color: rgba(138,212,255,.72); transform: translateY(-2px); }
+    .inventoryDiscCard.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(138,212,255,.22), 0 8px 20px rgba(0,0,0,.32); }
+    .inventoryDiscCard:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .inventorySlotBadge, .inventoryOwnerAvatar { position: absolute; top: 7px; z-index: 2; }
+    .inventorySlotBadge {
+      left: 7px;
+      width: 28px;
+      height: 28px;
+      display: grid;
+      place-items: center;
+      border-radius: 9px;
+      border: 1px solid rgba(255,255,255,.42);
+      background: #f4d83f;
+      color: #151515;
+      font-weight: 950;
+      font-size: 15px;
+      transform: rotate(-3deg);
+    }
+    .inventoryOwnerAvatar { top: 6px; right: 6px; width: 42px; height: 42px; }
+    .inventoryDiscArt { position: relative; z-index: 1; width: min(78px, 78%); aspect-ratio: 1; margin: 0 auto 5px; }
+    .inventoryAssetCircle {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: grid;
+      place-items: center;
+      overflow: hidden;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.18);
+      background: #535965;
+      color: #fff;
+      font-size: 34px;
+      font-weight: 900;
+    }
+    .inventoryOwnerAvatar .inventoryAssetCircle { font-size: 16px; box-shadow: 0 0 0 2px #151923; }
+    .inventoryAssetCircle img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; }
+    .inventoryAssetCircle.loaded img { opacity: 1; }
+    .inventoryAssetCircle.loaded .inventoryAssetFallback { visibility: hidden; }
+    .inventoryAssetCircle.loaded[data-asset-kind="disc"] {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      clip-path: polygon(
+        28% 12%, 32% 11%, 77% 13%, 82% 15%, 85% 17%, 87% 20%,
+        88% 23%, 88% 29%, 85% 42%, 82% 54%, 79% 66%, 77% 74%,
+        75% 80%, 72% 83%, 68% 85%, 64% 86%, 58% 84.5%, 48% 81.5%,
+        36% 78.5%, 24% 74.5%, 12% 70.5%, 6% 68%, 6% 66%, 5% 63%,
+        6% 58%, 9% 47%, 13% 36%, 17% 25%, 21% 18%, 25% 14%
+      );
+    }
+    .inventoryAssetCircle.loaded[data-asset-kind="disc"] img {
+      inset: auto;
+      left: 50%;
+      top: 50%;
+      width: 148%;
+      height: 148%;
+      transform: translate(-50%, -49%);
+    }
+    .inventoryAssetCircle.loaded[data-asset-kind="disc"][data-asset-layout="precut"] {
+      clip-path: none;
+    }
+    .inventoryAssetCircle.loaded[data-asset-kind="disc"][data-asset-layout="precut"] img {
+      inset: 0;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      transform: none;
+    }
+    .inventoryAssetCircle.loaded[data-asset-kind="agent"] img {
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .inventoryAssetFallback { position: relative; z-index: 0; }
+    .inventoryCardSetName { position: relative; z-index: 1; font-size: 12px; line-height: 16px; font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .inventoryCardSubStats { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 3px; margin-top: 5px; }
+    .inventoryCardSubStat { min-width: 0; padding: 3px 4px; border-radius: 6px; background: rgba(255,255,255,.055); color: #cbd6ea; font-size: 10.5px; line-height: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+    .inventoryCardSubStat.empty { color: rgba(154,163,178,.5); text-align: center; }
+    .inventoryEmpty { grid-column: 1 / -1; min-height: 180px; display: grid; place-items: center; border: 1px dashed var(--border); border-radius: 14px; color: var(--muted); }
+    .inventoryDetailDrawer {
+      position: sticky;
+      top: 122px;
+      min-height: 286px;
+      border: 1px solid var(--border);
+      border-radius: 15px;
+      background: #101522;
+      padding: 14px;
+      overflow: hidden;
+    }
+    .inventoryDetailDrawer h3 { margin-top: 0; }
+    .inventoryDetailHero { display: grid; grid-template-columns: 88px minmax(0,1fr); gap: 12px; align-items: center; margin-bottom: 12px; }
+    .inventoryDetailHero .inventoryAssetCircle { width: 88px; height: 88px; }
+    .inventoryDetailTitle { font-size: 17px; font-weight: 900; word-break: break-word; }
+    .inventoryDetailStats { display: grid; gap: 8px; }
+    .inventoryDetailRow { padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,.035); }
+    .inventoryDetailRow strong { display: block; margin-bottom: 4px; color: #dbe7ff; }
+    .inventoryDetailSubStats { display: grid; grid-template-columns: 1fr; gap: 5px; }
+    .inventoryDetailPrimaryStat, .inventoryDetailSubStat { font-size: 24px; line-height: 26px; padding: 6px 12px; }
+    .inventoryDetailSubStat { width: 100%; margin: 0; justify-content: flex-start; }
+    .inventoryDetailSubStat.empty { color: rgba(154,163,178,.55); }
+    .inventoryDetailOwner { display: flex; gap: 9px; align-items: center; }
+    .inventoryDetailOwner .inventoryAssetCircle { width: 42px; height: 42px; flex: 0 0 42px; font-size: 18px; }
+    .inventoryDetailPlaceholder { min-height: 252px; display: grid; place-items: center; text-align: center; color: var(--muted); }
+    @media (max-width: 1060px) {
+      .inventoryCardsLayout { grid-template-columns: 1fr; }
+      .inventoryDetailDrawer { position: static; min-height: 0; }
+      .inventoryCardGrid { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); }
+    }
+    @media (max-width: 620px) {
+      .inventoryCardGrid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .inventoryDiscCard { min-height: 192px; }
+      .inventoryDetailHero { grid-template-columns: 72px minmax(0,1fr); }
+      .inventoryDetailHero .inventoryAssetCircle { width: 72px; height: 72px; }
+    }
     table { width: 100%; border-collapse: collapse; min-width: 820px; }
     th, td { padding: 9px 10px; border-bottom: 1px solid var(--border); vertical-align: top; text-align: left; }
     th { background: #121724; color: #dbe7ff; position: sticky; top: 0; z-index: 1; }
@@ -271,6 +424,15 @@
     .assignedPill { border-color: rgba(255,255,255,.35); color: #fff; background: rgba(255,255,255,.08); }
     .buildActions { margin-top: 10px; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
     .inventoryFilterActions { display: flex; align-items: end; gap: 8px; justify-content: flex-start; }
+    .scannerLaunchRow { display: flex; margin: 4px 0 14px; }
+    button.scannerLaunchButton {
+      border-color: #22c55e;
+      background: #16a34a;
+      color: #ffffff; font-weight: 800;
+      box-shadow: 0 5px 14px rgba(22,163,74,.24), inset 0 1px 0 rgba(255,255,255,.20);
+    }
+    button.scannerLaunchButton:hover { transform: translateY(-1px); filter: brightness(1.05); }
+    button.scannerLaunchButton:disabled { transform: none; filter: grayscale(.25); opacity: .72; }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -279,18 +441,18 @@
   <div class="wrap">
     <div class="titlebar">
       <div>
-        <h1>ZZZ Drive Optimizer v1.15｜绝区零驱动盘配装器</h1>
-        <div class="subtitle">本地保存库存，支持强攻/命破/异常/击破/辅助多职业配装。</div>
+        <h1>ZZZ Drive Optimizer __APP_RELEASE__｜绝区零驱动盘配装器</h1>
+        <div class="subtitle">本地保存库存，支持强攻/命破/异常/击破/防护/辅助多职业配装。</div>
       </div>
       <div class="row titleActions">
-        <button id="exportStateBtn" class="small">导出库存 JSON</button>
-        <label class="ghostButton small" for="importStateFile">导入库存 JSON</label>
+        <button id="exportInteropBtn" class="small" title="可直接导入 zzz_calculator">导出通用驱动盘 JSON</button>
+        <button id="exportStateBtn" class="small" title="包含配装方案与本地归属，仅用于本软件恢复">导出完整备份</button>
+        <label class="ghostButton small" for="importStateFile">导入 JSON（自动识别）</label>
         <input id="importStateFile" type="file" accept="application/json,.json" class="hidden" />
         <button id="shutdownBtn" class="small danger">退出程序</button>
       </div>
     </div>
     <nav>
-      <a href="#scanImport">扫描导入</a>
       <a href="#input">录入</a>
       <a href="#inventory">库存</a>
       <a href="#optimizer">配装</a>
@@ -314,31 +476,9 @@
     </div>
   </section>
 
-  <section class="card" id="scanImport">
-    <h2>扫描器与批量导入</h2>
-    <div class="tipText">
-      使用独立维护的 <strong>ZZZ Scanner Next</strong> 扫描游戏中的 S 级 +15 驱动盘。请先打开游戏并停留在背包的驱动盘页面；扫描期间保持游戏可见，不要操作鼠标或切换窗口。
-    </div>
-    <div class="row">
-      <button id="launchExternalScannerBtn" class="success" type="button">启动扫描器</button>
-      <span class="fine">外部组件版本 1.0.45；扫描完成后会先显示数量并请你确认。</span>
-    </div>
-    <div id="externalScannerStatus" class="notice">尚未启动扫描器。</div>
-    <div class="fine">视觉扫描不读取游戏内存，也不接触账号凭据。识别或兼容问题由 <a href="https://github.com/ZztIsolation/ZZZ-Scanner.Next" target="_blank" rel="noreferrer">ZZZ Scanner Next</a> 项目维护。</div>
-    <div class="tipText" style="margin-top:14px">
-      兼容入口：选择 <strong>ZZZ Drive Scan</strong> 生成的 <code>scan-result.json</code>。程序会校验区服、客户端版本和协议指纹，再显示新增/更新差异。
-    </div>
-    <div class="row">
-      <label class="ghostButton" for="scanResultFile">选择扫描结果 JSON</label>
-      <input id="scanResultFile" type="file" accept="application/json,.json" class="hidden" />
-      <button id="applyScanImportBtn" class="success" type="button" disabled>确认写入库存</button>
-    </div>
-    <div id="scanImportPreview" class="notice">尚未选择扫描结果。</div>
-    <div class="fine">按游戏内驱动盘 UID 更新；重复导入不会产生副本。已有备注、废弃标记、配装归属和创建时间会保留。</div>
-  </section>
-
   <section class="card" id="input">
     <h2>1. 录入驱动盘</h2>
+    <!--__SCANNER_BUTTON__-->
     <div class="tipText">
       套装名通过下拉选择；默认所有驱动盘均按 <strong>S 级 +15</strong> 处理。主属性会按槽位限定并自动校验；副词条数值请直接填百分比数字，例如 7.2% 填 <strong>7.2</strong>。
     </div>
@@ -434,7 +574,15 @@
         <select id="filterAgent"><option value="">全部</option></select>
       </label>
     </div>
-    <div class="tableWrap inventoryTableWrap" style="margin-top:12px">
+    <div class="row inventoryViewToolbar" aria-label="库存视图切换">
+      <button type="button" id="inventoryCardsViewBtn" class="small">卡片视图</button>
+      <button type="button" id="inventoryTableViewBtn" class="small">表格视图</button>
+    </div>
+    <div id="inventoryCardsView" class="inventoryCardsLayout">
+      <div id="inventoryCardGrid" class="inventoryCardGrid" aria-live="polite"></div>
+      <aside id="inventoryDetailDrawer" class="inventoryDetailDrawer" aria-live="polite"></aside>
+    </div>
+    <div id="inventoryTableWrap" class="tableWrap inventoryTableWrap hidden" style="margin-top:12px">
       <table>
         <thead>
           <tr>
@@ -464,6 +612,7 @@
             <option value="RUPTURE">命破</option>
             <option value="ANOMALY">异常</option>
             <option value="STUN">击破</option>
+            <option value="DEFENSE">防护</option>
             <option value="SUPPORT">辅助</option>
           </select>
         </label>
@@ -542,7 +691,7 @@
       <div id="strategyTip" class="tipText">
         先填写需要参与筛选的期望属性；未作为当前职业常用目标的输入框会以灰色显示，但仍可手动输入数值启用。若填写 2 个及以上期望属性，配装策略会默认切换为“遵守严格指标”。
       </div>
-      <div class="grid cols-5" id="targetGrid">
+      <div class="grid cols-6" id="targetGrid">
         <label id="targetCritLabel" data-target-field="crit">期望暴击率 %
           <input id="targetCritRate" type="number" step="0.1" value="80" />
         </label>
@@ -554,6 +703,9 @@
         </label>
         <label id="targetHpLabel" data-target-field="hp">期望生命值
           <input id="targetFinalHP" type="number" step="1" value="0" />
+        </label>
+        <label id="targetDefLabel" data-target-field="def">期望防御力
+          <input id="targetFinalDefense" type="number" step="1" value="0" />
         </label>
         <label id="targetAnomalyLabel" data-target-field="ap">期望异常精通
           <input id="targetAnomalyProficiency" type="number" step="1" value="0" />
@@ -597,25 +749,29 @@
 
 <div id="toast" class="toast"></div>
 
+<script src="/assets/asset-map.js"></script>
+<script src="/assets/drive-disc-interop.js"></script>
 <script>
 const $ = (sel) => document.querySelector(sel);
 const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-const SCAN_IMPORT_TOKEN = '__ZZZ_IMPORT_TOKEN__';
 const STAT_LABELS = {
-  HP_FLAT: '生命值', HP_PERCENT: '生命值%', ATK_FLAT: '攻击力', ATK_PERCENT: '攻击力%', DEF_FLAT: '防御力', DEF_PERCENT: '防御力%', BASE_ATK: '音擎/核心基础攻击力', BASE_HP: '核心基础生命值', SHEER_FORCE_FLAT: '固定贯穿力',
+  HP_FLAT: '生命值', HP_PERCENT: '生命值%', ATK_FLAT: '攻击力', ATK_PERCENT: '攻击力%', DEF_FLAT: '防御力', DEF_PERCENT: '防御力%', BASE_ATK: '音擎/核心基础攻击力', BASE_HP: '核心基础生命值', BASE_DEF: '核心基础防御力', SHEER_FORCE_FLAT: '固定贯穿力',
   CRIT_RATE: '暴击率%', CRIT_DMG: '暴击伤害%', PEN_FLAT: '穿透值', PEN_RATIO: '穿透率%', ANOMALY_PROFICIENCY: '异常精通', ANOMALY_MASTERY: '异常掌控%', ENERGY_REGEN: '能量自动回复%', IMPACT: '冲击力%',
-  FIRE_DMG: '火属性伤害%', ICE_DMG: '冰属性伤害%', ELECTRIC_DMG: '电属性伤害%', PHYSICAL_DMG: '物理伤害%', ETHER_DMG: '以太伤害%', WIND_DMG: '风属性伤害%', ELEMENT_DMG: '通用属性伤害%', SHEER_DMG_BONUS: '贯穿伤害加成%',
+  FIRE_DMG: '火属性伤害%', ICE_DMG: '冰属性伤害%', ELECTRIC_DMG: '电属性伤害%', PHYSICAL_DMG: '物理伤害%', ETHER_DMG: '以太伤害%', WIND_DMG: '风属性伤害%', LUMIFLUX_DMG: '流明属性伤害%', ELEMENT_DMG: '通用属性伤害%', ANOMALY_DMG_BONUS: '属性异常伤害提升%', SQUAD_DMG_BONUS: '全队造成伤害提升%', SHEER_DMG_BONUS: '贯穿伤害加成%',
   INITIAL_ENERGY_REGEN: '初始能量自动回复', ANOMALY_MASTERY_FLAT: '异常掌控固定提升', FINAL_ANOMALY_MASTERY: '实战异常掌控', VELINA_CORE_DMG_BONUS: '维琳娜核心增伤%', VORTEX_WINDSWEPT_DMG: '乱流/风化伤害%', ETHER_RES_IGNORE: '无视以太抗性%'
 };
-const PERCENT_STATS = new Set(['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','CRIT_RATE','CRIT_DMG','PEN_RATIO','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','ELEMENT_DMG','SHEER_DMG_BONUS','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE']);
-const STAT_ORDER = ['CRIT_RATE','CRIT_DMG','ATK_PERCENT','HP_PERCENT','ANOMALY_PROFICIENCY','PEN_FLAT','PEN_RATIO','ATK_FLAT','HP_FLAT','BASE_ATK','BASE_HP','SHEER_FORCE_FLAT','DEF_PERCENT','DEF_FLAT','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','ELEMENT_DMG','SHEER_DMG_BONUS','INITIAL_ENERGY_REGEN','ANOMALY_MASTERY_FLAT','FINAL_ANOMALY_MASTERY','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE'];
-const BUILTIN_SET_NAMES = ['啄木鸟电音','震星迪斯科','河豚电音','激素朋克','摇摆爵士','灵魂摇滚','自由蓝调','极地重金属','炎狱重金属','雷暴重金属','獠牙重金属','混沌重金属','原始朋克','混沌爵士','折枝剑歌','静听嘉音','法厄同之歌','如影相随','云岿如我','山大王','月光骑士颂','拂晓生花','雪兔梦游仙境','囚徒手记','流光咏叹','沧浪行歌','呼啸沙龙','拂晓行纪'];
+const PERCENT_STATS = new Set(['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','CRIT_RATE','CRIT_DMG','PEN_RATIO','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','LUMIFLUX_DMG','ELEMENT_DMG','ANOMALY_DMG_BONUS','SQUAD_DMG_BONUS','SHEER_DMG_BONUS','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE']);
+const STAT_ORDER = ['CRIT_RATE','CRIT_DMG','ATK_PERCENT','HP_PERCENT','ANOMALY_PROFICIENCY','PEN_FLAT','PEN_RATIO','ATK_FLAT','HP_FLAT','BASE_ATK','BASE_HP','BASE_DEF','SHEER_FORCE_FLAT','DEF_PERCENT','DEF_FLAT','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','LUMIFLUX_DMG','ELEMENT_DMG','ANOMALY_DMG_BONUS','SQUAD_DMG_BONUS','SHEER_DMG_BONUS','INITIAL_ENERGY_REGEN','ANOMALY_MASTERY_FLAT','FINAL_ANOMALY_MASTERY','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE'];
+const BUILTIN_SET_NAMES = ['啄木鸟电音','震星迪斯科','河豚电音','激素朋克','摇摆爵士','灵魂摇滚','自由蓝调','极地重金属','炎狱重金属','雷暴重金属','獠牙重金属','混沌重金属','原始朋克','混沌爵士','折枝剑歌','静听嘉音','法厄同之歌','如影相随','云岿如我','山大王','月光骑士颂','拂晓生花','雪兔梦游仙境','囚徒手记','流光咏叹','沧浪行歌','呼啸沙龙','拂晓行纪','荧光蛛眼','谶羽之誓','荆棘玫瑰'];
 const DRIVE_SET_INFO = {
   '呼啸沙龙': {two:'2件套：风属性伤害 +10%。',four:'4件套：发动强化特殊技时异常精通 +25，最多 2 层、持续 40 秒；触发风化后造成伤害 +18%，持续 40 秒。',model:'本工具的实战参考按 2 层满叠计入异常精通 +50，并按已触发风化计入通用增伤 +18%；不混入角色详情面板。'},
-  '拂晓行纪': {two:'2件套：以太伤害 +10%。',four:'4件套：以太属性代理人暴击伤害 +30%；发动强化特殊技或终结技时攻击力 +10%，持续 30 秒。',model:'v1.14 起，4件套暴伤 +30% 与触发攻击力 +10% 均不写入角色详情面板；二者作为实战参考/排序参考显示。'}
+  '拂晓行纪': {two:'2件套：以太伤害 +10%。',four:'4件套：以太属性代理人暴击伤害 +30%；发动强化特殊技或终结技时攻击力 +10%，持续 30 秒。',model:'v1.18 延续 Pro 校准口径：4件套暴伤 +30% 与触发攻击力 +10% 均不写入角色详情面板；结果区“有效词条”按游戏面板口径显示；二者作为实战参考/排序参考显示。'},
+  '荧光蛛眼': {two:'截图校验新增套装名；当前版本先支持录入、筛选、4+2 搜索与有效词条校验。',four:'4件套效果暂不写入角色详情面板；如需完整战斗模型，后续再按官方资料补充。',model:'v1.18 暂按无静态2件套面板加成处理，仅用于爱芮截图回归和库存检索。'},
+  '谶羽之誓': {two:'2件套：异常精通 +30。',four:'4件套：进入战场或切换为当前操作角色时异常精通 +50；若为流明属性，属性异常伤害 +15%，持续 15 秒；位于后台时始终持有。',model:'2件套静态精通计入角色详情面板；4件套精通与流明异常伤害只作为实战参考。'},
+  '荆棘玫瑰': {two:'2件套：防御力 +16%。',four:'4件套：造成的伤害 +15%；初始防御力达到 1000/1800 时，暴击率提升 8%/16%。',model:'2件套防御力计入角色详情面板；4件套伤害与分档暴击率暂不自动写入面板，避免未达到阈值时误算。'}
 };
-const SLOT_MAIN_STAT_OPTIONS = {1:['HP_FLAT'],2:['ATK_FLAT'],3:['DEF_FLAT'],4:['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','CRIT_RATE','CRIT_DMG','ANOMALY_PROFICIENCY'],5:['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','PEN_RATIO','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG'],6:['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT']};
-const DEFAULT_MAIN_STAT_VALUES = {HP_FLAT:2200,ATK_FLAT:316,DEF_FLAT:184,HP_PERCENT:30,ATK_PERCENT:30,DEF_PERCENT:48,CRIT_RATE:24,CRIT_DMG:48,ANOMALY_PROFICIENCY:92,PEN_RATIO:24,FIRE_DMG:30,ICE_DMG:30,ELECTRIC_DMG:30,PHYSICAL_DMG:30,ETHER_DMG:30,WIND_DMG:30,ANOMALY_MASTERY:30,ENERGY_REGEN:60,IMPACT:18};
+const SLOT_MAIN_STAT_OPTIONS = {1:['HP_FLAT'],2:['ATK_FLAT'],3:['DEF_FLAT'],4:['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','CRIT_RATE','CRIT_DMG','ANOMALY_PROFICIENCY'],5:['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','PEN_RATIO','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','LUMIFLUX_DMG'],6:['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT']};
+const DEFAULT_MAIN_STAT_VALUES = {HP_FLAT:2200,ATK_FLAT:316,DEF_FLAT:184,HP_PERCENT:30,ATK_PERCENT:30,DEF_PERCENT:48,CRIT_RATE:24,CRIT_DMG:48,ANOMALY_PROFICIENCY:92,PEN_RATIO:24,FIRE_DMG:30,ICE_DMG:30,ELECTRIC_DMG:30,PHYSICAL_DMG:30,ETHER_DMG:30,WIND_DMG:30,LUMIFLUX_DMG:30,ANOMALY_MASTERY:30,ENERGY_REGEN:60,IMPACT:18};
 
 const CHARACTERS = [
   {name:'佩洛伊斯',fullName:'佩洛伊斯',rank:'S',element:'ETHER',faction:'法厄同',role:'ATTACK',hp:7673,atk:849,def:612,impact:94,coreDefault:'0',baseAtkBonus:75,baseAnomalyProficiency:93,baseAnomalyMastery:94,baseEnergyRegen:1,extra:{CRIT_RATE:14.4},unleveledPanel:{baseAtkExtra:62,anomalyProficiency:120,note:'按用户 3.0 实机代理人信息截图校准：在未升级技能/未计入核心技F成长时，佩洛伊斯面板基准按攻击 911、异常精通 120 参与计算；不额外计入核心技F的暴击率 +14.4%。'},coreDetail:'已加入“未升级技能 / 实机截图校准”和核心技 A-F 两类口径。资料站满核心F口径：生命 7673、攻击 924、防御 612、冲击力 94、暴击率 19.4%、暴击伤害 50%、异常精通 93、异常掌控 94；核心F额外成长包含暴击率 +14.4% 与基础攻击力 +75。队伍中有击破或支援时的额外暴伤、四分支终结技和队伍条件效果不自动并入通用指数。'},
@@ -625,7 +781,6 @@ const CHARACTERS = [
   {name:'雨果',role:'ATTACK',hp:7940,atk:844,def:616,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
   {name:'零号·安比',role:'ATTACK',hp:7673,atk:854,def:612,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
   {name:'伊芙琳',role:'ATTACK',hp:7788,atk:854,def:612,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
-  {name:'星见雅',role:'ATTACK',hp:7673,atk:805,def:606,baseAtkBonus:75,extra:{ANOMALY_PROFICIENCY:90},special:true,specialNote:'特殊：异常代理人，但本工具中按强攻暴击思路配装'},
   {name:'悠真',role:'ATTACK',hp:7406,atk:840,def:600,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
   {name:'朱鸢',role:'ATTACK',hp:7482,atk:844,def:600,baseAtkBonus:75,extra:{CRIT_DMG:28.8}},
   {name:'「11号」',role:'ATTACK',hp:7673,atk:813,def:612,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
@@ -634,11 +789,13 @@ const CHARACTERS = [
   {name:'可琳',role:'ATTACK',hp:6976,atk:732,def:604,baseAtkBonus:75,extra:{CRIT_DMG:28.8}},
   {name:'安东',role:'ATTACK',hp:7218,atk:716,def:622,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
   {name:'比利',role:'ATTACK',hp:6906,atk:712,def:606,baseAtkBonus:75,extra:{CRIT_RATE:14.4}},
+  {name:'希希芙',rank:'S',element:'ELECTRIC',faction:'都市秩序部',role:'ATTACK',hp:7674,atk:863,def:607,impact:93,baseAtkBonus:75,baseAnomalyProficiency:93,baseAnomalyMastery:94,baseEnergyRegen:1.2,extra:{ENERGY_REGEN:0.36}},
   {name:'般岳',role:'RUPTURE',hp:8497,atk:784,def:445,baseAtkBonus:75,hpToSheerRatio:0.1,flatSheer:150,extra:{CRIT_RATE:14.4}},
   {name:'伊德海莉',role:'RUPTURE',hp:8497,atk:784,def:448,baseAtkBonus:75,hpToSheerRatio:0.1,extra:{CRIT_RATE:14.4}},
   {name:'仪玄',role:'RUPTURE',hp:7953,atk:872,def:441,baseHPBonus:420,hpToSheerRatio:0.1,extra:{CRIT_RATE:14.4}},
   {name:'真斗',role:'RUPTURE',hp:7724,atk:680,def:443,baseAtkBonus:75,hpToSheerRatio:0.1,extra:{HP_PERCENT:18}},
   {name:'星徽·比利',role:'RUPTURE',hp:8497,atk:784,def:445,baseAtkBonus:75,hpToSheerRatio:0.1,extra:{CRIT_RATE:14.4}},
+  {name:'蕾米埃尔',fullName:'蕾米埃尔·丹',rank:'S',element:'LUMIFLUX',faction:'达识结社',role:'ANOMALY',hp:7482,atk:823,def:600,impact:83,baseAtkBonus:75,baseAnomalyProficiency:170,baseAnomalyMastery:115,baseEnergyRegen:1.2,extra:{ANOMALY_PROFICIENCY:54},coreDetail:'3.1 创作者体验服 3.1.12 口径：60级核心技F总面板为生命 7482、攻击 898、防御 600、冲击力 83、暴击率 5%、暴击伤害 50%、异常精通 224、异常掌控 115、初始能量自动回复 1.2。额外能力按队伍内 1/2/3 名异常角色提供蕾米埃尔初始攻击力 6%/12%/40% 的全队攻击力，最高 1600；三异常队约需 4000 初始攻击力吃满。队伍增益、异化/耀变倍率及异常积蓄效率不写入通用面板指数。'},
   {name:'维琳娜',fullName:'维琳娜·艾嘉德',rank:'S',element:'WIND',faction:'罗斯凯利法·外务筹策局',role:'ANOMALY',hp:7788,atk:797,def:612,impact:86,baseAtkBonus:75,baseAnomalyProficiency:111,baseAnomalyMastery:112,baseEnergyRegen:1.2,extra:{ANOMALY_PROFICIENCY:54},coreDetail:'60级核心技F总面板：生命 7788、攻击 872、防御 612、冲击力 86、暴击率 5%、暴击伤害 50%、异常精通 165、异常掌控 112、初始能量自动回复 1.2。初始能量自动回复高于 1.2 后，每超 0.01 获得 0.21%伤害与 0.5 异常掌控，最多 35% / 84 点；配装结果会按面板回能自动换算实战参考。'},
   {name:'爱芮',role:'ANOMALY',hp:7749,atk:788,def:619,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
   {name:'爱丽丝',role:'ANOMALY',hp:7673,atk:805,def:606,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
@@ -648,7 +805,8 @@ const CHARACTERS = [
   {name:'柏妮思',role:'ANOMALY',hp:7368,atk:788,def:600,baseAtkBonus:75,extra:{ENERGY_REGEN:0.36}},
   {name:'简',role:'ANOMALY',hp:7788,atk:805,def:606,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
   {name:'格莉丝',role:'ANOMALY',hp:7482,atk:751,def:600,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
-  {name:'派派',role:'ANOMALY',hp:6976,atk:683,def:612,baseAtkBonus:75,extra:{ENERGY_REGEN:0.36}}
+  {name:'派派',role:'ANOMALY',hp:6976,atk:683,def:612,baseAtkBonus:75,extra:{ENERGY_REGEN:0.36}},
+  {name:'普罗米娅',rank:'S',element:'ICE',faction:'坎卜斯黑枝',role:'ANOMALY',hp:7789,atk:798,def:613,impact:86,baseAtkBonus:75,baseAnomalyProficiency:114,baseAnomalyMastery:112,baseEnergyRegen:1.2,extra:{ANOMALY_MASTERY:36}}
 ];
 
 CHARACTERS.push(...[
@@ -656,13 +814,18 @@ CHARACTERS.push(...[
   {name:'琉音',role:'STUN',hp:8250,atk:758,def:612,extra:{CRIT_RATE:14.4}},
   {name:'橘福福',role:'STUN',hp:8250,atk:765,def:597,extra:{CRIT_RATE:14.4}},
   {name:'「扳机」',role:'STUN',hp:7923,atk:750,def:600,extra:{}},
-  {name:'普尔克拉',role:'STUN',hp:7612,atk:665,def:606,extra:{}},
   {name:'波可娜',role:'STUN',hp:7612,atk:665,def:606,extra:{}},
+  {name:'诺姆',fullName:'诺姆·霍洛维尔',rank:'S',element:'FIRE',faction:'罗斯凯利法·外务筹策局',role:'STUN',hp:7800,atk:687,def:583,impact:106,baseAtkBonus:75,baseAnomalyProficiency:98,baseAnomalyMastery:99,baseEnergyRegen:1.2,extra:{IMPACT:18}},
   {name:'青衣',role:'STUN',hp:8250,atk:758,def:612,extra:{}},
   {name:'莱特',role:'STUN',hp:8253,atk:797,def:612,extra:{}},
   {name:'莱卡恩',role:'STUN',hp:8416,atk:728,def:606,extra:{}},
   {name:'珂蕾妲',role:'STUN',hp:8127,atk:735,def:594,extra:{}},
   {name:'安比',role:'STUN',hp:7500,atk:658,def:612,extra:{}},
+  {name:'凯撒',rank:'S',element:'PHYSICAL',faction:'卡吕冬之子',role:'DEFENSE',hp:9526,atk:637,def:754,impact:105,baseAtkBonus:75,baseAnomalyProficiency:90,baseAnomalyMastery:87,baseEnergyRegen:1.2,extra:{IMPACT:18}},
+  {name:'赛斯',rank:'A',element:'ELECTRIC',faction:'刑侦特勤组',role:'DEFENSE',hp:8701,atk:568,def:746,impact:94,baseAtkBonus:75,baseAnomalyProficiency:90,baseAnomalyMastery:86,baseEnergyRegen:1.2,extra:{ENERGY_REGEN:0.36}},
+  {name:'本',fullName:'本·比格',rank:'A',element:'FIRE',faction:'白祇重工',role:'DEFENSE',hp:8578,atk:578,def:724,impact:95,baseAtkBonus:75,baseAnomalyProficiency:90,baseAnomalyMastery:86,baseEnergyRegen:1.2,extra:{ENERGY_REGEN:0.36}},
+  {name:'潘引壶',rank:'A',element:'PHYSICAL',faction:'云岿山',role:'DEFENSE',hp:8454,atk:587,def:713,impact:94,baseAtkBonus:75,baseAnomalyProficiency:90,baseAnomalyMastery:91,baseEnergyRegen:1.2,extra:{ENERGY_REGEN:0.36}},
+  {name:'照',rank:'S',element:'ICE',faction:'坎卜斯黑枝',role:'DEFENSE',hp:9117,atk:691,def:702,impact:93,baseAtkBonus:75,baseAnomalyProficiency:96,baseAnomalyMastery:93,baseEnergyRegen:1.2,extra:{HP_PERCENT:30}},
   {name:'千夏',role:'SUPPORT',hp:8477,atk:750,def:600,extra:{}},
   {name:'卢西娅',role:'SUPPORT',hp:8477,atk:758,def:594,extra:{}},
   {name:'柚叶',role:'SUPPORT',hp:8829,atk:758,def:612,extra:{}},
@@ -677,12 +840,13 @@ const WENGINE_BASE_ATK = {
   '深海访客':713,'防暴者Ⅵ型':713,'玉壶青冰':713,'淬锋钳刺':713,'奔袭獠牙':713,'灼心摇壶':713,'焰心桂冠':713,'时流贤者':713,
   '霰落星殿':743,'残心青囊':713,'玲珑妆匣':713,'心弦夜响':713,'牺牲洁纯':713,'索魂影眸':713,'飞鸟星梦':713,'千面日陨':713,'青溟笼舍':743,
   '福虓炉炉':713,'狸法七变化':713,'十方锻星':713,'机巧心种':713,'嚣枪喧焰':713,'铸梦炉歌':713,'海妖摇篮':713,'昨夜来电':713,'怒目金刚':713,'云霓孤光':743,
-  '半糖雪兔':713,'思络成歌':713,'壳中之灵':713,'霓虹妄想':713,'鳞齿寻踪':713,'朔月裁霜':713,'辉骑面铠':713,'琳琅鎏心':713,'日冕遗蜕':713,
+  '半糖雪兔':713,'思络成歌':713,'壳中之灵':713,'霓虹妄想':713,'鳞齿寻踪':713,'朔月裁霜':713,'辉骑面铠':713,'琳琅鎏心':713,'日冕遗蜕':713,'首席跟班':713,'空羽复归之诗':743,
   '仿制星徽引擎':624,'含羞恶面':624,'好斗的阿炮':624,'家政员':624,'德玛拉电池Ⅱ型':624,'比格气缸':624,'旋钻机-赤轴':624,'维序者-特化型':624,'聚宝箱':624,'轰鸣座驾':624,'裁纸刀':624,'燔火胧夜':624,'震元奇枢':624,
   '强音热望':594,'星徽引擎':594,'触电唇彩':594,'雨林饕客':594,'双生泣星':594,'加农转子':594
 };
 const RELEASE_ORDER_BY_NAME = {
-  '维琳娜':3002,'维琳娜·艾嘉德':3002,'佩洛伊斯':3001,
+  '蕾米埃尔':3101,'蕾米埃尔·丹':3101,
+  '诺姆':3003,'诺姆·霍洛维尔':3003,'维琳娜':3002,'维琳娜·艾嘉德':3002,'佩洛伊斯':3001,
   '普罗米娅':2802,'星徽·比利':2801,
   '希希芙':2702,'南宫羽':2701,
   '爱芮':2602,'千夏':2601,
@@ -693,7 +857,7 @@ const RELEASE_ORDER_BY_NAME = {
   '爱丽丝':2102,'柚叶':2101,
   '橘福福':2003,'仪玄':2002,'潘引壶':2001,
   '雨果':1702,'薇薇安':1701,
-  '「扳机」':1603,'零号·安比':1602,'普尔克拉':1601,'波可娜':1601,
+  '「扳机」':1603,'零号·安比':1602,'波可娜':1601,
   '伊芙琳':1502,'耀嘉音':1501,
   '星见雅':1402,'雅':1402,'悠真':1401,
   '莱特':1302,'柳':1301,
@@ -708,15 +872,19 @@ function releaseOrderOfName(name){return RELEASE_ORDER_BY_NAME[normalizeReleaseN
 function releaseOrderOfCharacter(c){return releaseOrderOfName(c?.releaseName||c?.name);}
 function releaseOrderOfWEngine(e){return e?.releaseOrder ?? releaseOrderOfName(e?.character);}
 const STRICT_MODE_OPTION = ['STRICT_TARGETS','遵守严格指标'];
-const ROLE_MODES = {ATTACK:[['MAX_CD','暴击率达标后，最高暴伤'],['MAX_WORDS','暴击率达标后，最高有效词条数'],STRICT_MODE_OPTION],RUPTURE:[['MAX_CD','暴击率达标后，最高暴伤'],['RUPTURE_SHEER','暴击率达标后，贯穿输出综合最高'],['MAX_WORDS','暴击率达标后，最高有效词条数'],STRICT_MODE_OPTION],ANOMALY:[['ANOMALY_AP','优先最高异常精通'],['ANOMALY_ATK','优先最高攻击力'],['ANOMALY_WORDS','综合词条数最高'],STRICT_MODE_OPTION],STUN:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION],SUPPORT:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION]};
+const ROLE_MODES = {ATTACK:[['MAX_CD','暴击率达标后，最高暴伤'],['MAX_WORDS','暴击率达标后，最高有效词条数'],STRICT_MODE_OPTION],RUPTURE:[['MAX_CD','暴击率达标后，最高暴伤'],['RUPTURE_SHEER','暴击率达标后，贯穿输出综合最高'],['MAX_WORDS','暴击率达标后，最高有效词条数'],STRICT_MODE_OPTION],ANOMALY:[['ANOMALY_AP','优先最高异常精通'],['ANOMALY_ATK','优先最高攻击力'],['ANOMALY_WORDS','综合词条数最高'],STRICT_MODE_OPTION],STUN:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION],DEFENSE:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION],SUPPORT:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION]};
 const WENGINE_EFFECT_MODE_TEXT = '音擎60级基础攻击力和高级属性计入角色界面面板；音擎技能属性按说明作为满触发实战参考，通常不混入角色界面暴击率。期望暴击率只按角色详情面板值判断；敌人抗性、队伍条件与专属倍率若无法通用量化，只展示而不写入期望指数。';
 const WENGINES = [{"name":"琳琅鎏心","character":"维琳娜","base":{"ENERGY_REGEN":60},"ranks":[{"ANOMALY_PROFICIENCY":130,"VORTEX_WINDSWEPT_DMG":14},{"ANOMALY_PROFICIENCY":149,"VORTEX_WINDSWEPT_DMG":16},{"ANOMALY_PROFICIENCY":168,"VORTEX_WINDSWEPT_DMG":18},{"ANOMALY_PROFICIENCY":187,"VORTEX_WINDSWEPT_DMG":20},{"ANOMALY_PROFICIENCY":206,"VORTEX_WINDSWEPT_DMG":22}],"note":"满级基础攻击 713，高级属性能量自动回复 60%。实战参考按专武效果 2 层满叠计算：自身常驻异常精通与全队异常精通同时计入佩戴者（1级为 70+60=130）；乱流/风化专属增伤仅展示，不并入通用伤害指数。"},{"name":"日冕遗蜕","character":"佩洛伊斯","base":{"ATK_PERCENT":30},"ranks":[{"CRIT_RATE":20,"ETHER_RES_IGNORE":16},{"CRIT_RATE":20,"ETHER_RES_IGNORE":17.5},{"CRIT_RATE":20,"ETHER_RES_IGNORE":19},{"CRIT_RATE":20,"ETHER_RES_IGNORE":20.5},{"CRIT_RATE":20,"ETHER_RES_IGNORE":22}],"note":"满级基础攻击 713，高级属性攻击力 30%。音擎技能提供 20%实战暴击率；佩洛伊斯进入战斗或发动终结技后获得「蚀影」，无视以太抗性按等级显示。由于通用指数没有敌人抗性参数，抗性无视不直接参与排序。"},{"name":"云霓孤光","character":"叶瞬光","base":{"CRIT_DMG":48},"ranks":[{"CRIT_DMG":25},{"CRIT_DMG":28.7},{"CRIT_DMG":32.5},{"CRIT_DMG":36.2},{"CRIT_DMG":40}],"note":"计入满级高级属性，以及开启以太帷幕后可量化的暴击伤害。"},{"name":"十方锻星","character":"爱丽丝","base":{"ATK_PERCENT":30},"ranks":[{"ANOMALY_MASTERY":60},{"ANOMALY_MASTERY":69},{"ANOMALY_MASTERY":78},{"ANOMALY_MASTERY":87},{"ANOMALY_MASTERY":96}],"note":"计入满级高级属性，以及被动异常掌控；伤害提升不参与本工具排序。"},{"name":"千面日陨","character":"雨果","base":{"CRIT_RATE":24},"ranks":[{"CRIT_DMG":45},{"CRIT_DMG":51.75},{"CRIT_DMG":58.5},{"CRIT_DMG":65.25},{"CRIT_DMG":72}],"note":"计入满级高级属性，以及被动暴击伤害。"},{"name":"半糖雪兔","character":"照","base":{"HP_PERCENT":30},"ranks":[{"ATK_PERCENT":10,"HP_PERCENT":10,"CRIT_DMG":30},{"ATK_PERCENT":11.5,"HP_PERCENT":11.5,"CRIT_DMG":34.5},{"ATK_PERCENT":13,"HP_PERCENT":13,"CRIT_DMG":39},{"ATK_PERCENT":14.5,"HP_PERCENT":14.5,"CRIT_DMG":43.5},{"ATK_PERCENT":16,"HP_PERCENT":16,"CRIT_DMG":48}],"note":"计入满级高级属性，以及可量化的全队攻击、生命、暴伤类加成。"},{"name":"啜泣摇篮","character":"丽娜","base":{"PEN_RATIO":24},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；伤害提升不参与本工具排序。"},{"name":"嚣枪喧焰","character":"奥菲丝&「鬼火」","base":{"ENERGY_REGEN":60},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及被动暴击率；无视防御不参与本工具排序。"},{"name":"壳中之灵","character":"爱芮","base":{"ANOMALY_MASTERY":30},"ranks":[{"ANOMALY_PROFICIENCY":90},{"ANOMALY_PROFICIENCY":103.5},{"ANOMALY_PROFICIENCY":117},{"ANOMALY_PROFICIENCY":130.5},{"ANOMALY_PROFICIENCY":144}],"note":"计入满级高级属性，以及可量化的异常精通。"},{"name":"奔袭獠牙","character":"凯撒","base":{"IMPACT":18},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；护盾、失衡值、增伤不参与本工具排序。"},{"name":"嵌合编译器","character":"格莉丝","base":{"PEN_RATIO":24},"ranks":[{"ATK_PERCENT":12,"ANOMALY_PROFICIENCY":75},{"ATK_PERCENT":15,"ANOMALY_PROFICIENCY":93},{"ATK_PERCENT":18,"ANOMALY_PROFICIENCY":111},{"ATK_PERCENT":21,"ANOMALY_PROFICIENCY":129},{"ATK_PERCENT":24,"ANOMALY_PROFICIENCY":150}],"note":"计入满级高级属性、攻击力加成，以及满层异常精通。"},{"name":"心弦夜响","character":"伊芙琳","base":{"CRIT_RATE":24},"ranks":[{"CRIT_DMG":50},{"CRIT_DMG":57.5},{"CRIT_DMG":65},{"CRIT_DMG":72.5},{"CRIT_DMG":80}],"note":"计入满级高级属性，以及被动暴击伤害。"},{"name":"怒目金刚","character":"般岳","base":{"HP_PERCENT":30},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及被动暴击率。"},{"name":"思络成歌","character":"千夏","base":{"ENERGY_REGEN":60},"ranks":[{"ATK_PERCENT":10},{"ATK_PERCENT":11.5},{"ATK_PERCENT":13},{"ATK_PERCENT":14.5},{"ATK_PERCENT":16}],"note":"计入满级高级属性，以及可量化的全队攻击力加成；伤害提升不参与本工具排序。"},{"name":"拘缚者","character":"莱卡恩","base":{"IMPACT":18},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；普攻伤害/失衡值效果不参与本工具排序。"},{"name":"时流贤者","character":"柳","base":{"ATK_PERCENT":30},"ranks":[{"ANOMALY_PROFICIENCY":75},{"ANOMALY_PROFICIENCY":85},{"ANOMALY_PROFICIENCY":95},{"ANOMALY_PROFICIENCY":105},{"ANOMALY_PROFICIENCY":115}],"note":"计入满级高级属性，以及可量化的异常精通。"},{"name":"昨夜来电","character":"琉音","base":{"CRIT_RATE":24},"ranks":[{"CRIT_DMG":30},{"CRIT_DMG":34.5},{"CRIT_DMG":39},{"CRIT_DMG":43.5},{"CRIT_DMG":48}],"note":"计入满级高级属性，以及满层全队暴击伤害。"},{"name":"朔月裁霜","character":"普罗米娅","base":{"ANOMALY_MASTERY":30},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；冰伤与异放增伤不参与本工具排序。"},{"name":"机巧心种","character":"「席德」","base":{"CRIT_RATE":24},"ranks":[{"CRIT_RATE":15},{"CRIT_RATE":17},{"CRIT_RATE":19},{"CRIT_RATE":21},{"CRIT_RATE":23}],"note":"计入满级高级属性，以及被动暴击率；增伤和无视防御不参与本工具排序。"},{"name":"残心青囊","character":"悠真","base":{"CRIT_DMG":48},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及基础+条件触发后的暴击率。"},{"name":"海妖摇篮","character":"伊德海莉","base":{"HP_PERCENT":30},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及低生命条件下的暴击率。"},{"name":"淬锋钳刺","character":"简","base":{"ANOMALY_PROFICIENCY":90},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；物理增伤和异常积蓄效率不参与本工具排序。"},{"name":"深海访客","character":"艾莲","base":{"CRIT_RATE":24},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":25},{"CRIT_RATE":30},{"CRIT_RATE":35},{"CRIT_RATE":40}],"note":"计入满级高级属性，以及两段暴击率均触发后的数值。"},{"name":"灼心摇壶","character":"柏妮思","base":{"ATK_PERCENT":30},"ranks":[{"ANOMALY_PROFICIENCY":50},{"ANOMALY_PROFICIENCY":62},{"ANOMALY_PROFICIENCY":75},{"ANOMALY_PROFICIENCY":87},{"ANOMALY_PROFICIENCY":100}],"note":"计入满级高级属性，以及可量化的异常精通。"},{"name":"焰心桂冠","character":"莱特","base":{"IMPACT":18},"ranks":[{"IMPACT":25},{"IMPACT":28.75},{"IMPACT":32.5},{"IMPACT":36.25},{"IMPACT":40}],"note":"计入满级高级属性，以及快速/极限支援后的冲击力；队伍暴伤不参与本工具排序。"},{"name":"燃狱齿轮","character":"珂蕾妲","base":{"IMPACT":18},"ranks":[{"IMPACT":20},{"IMPACT":25},{"IMPACT":30},{"IMPACT":35},{"IMPACT":40}],"note":"计入满级高级属性，以及强化特殊技后的满层冲击力。"},{"name":"牺牲洁纯","character":"零号·安比","base":{"CRIT_DMG":48},"ranks":[{"CRIT_DMG":60},{"CRIT_DMG":69},{"CRIT_DMG":78},{"CRIT_DMG":87},{"CRIT_DMG":96}],"note":"计入满级高级属性，以及基础+满层后的暴击伤害。"},{"name":"狸法七变化","character":"柚叶","base":{"ENERGY_REGEN":60},"ranks":[{"ANOMALY_MASTERY":30,"ANOMALY_PROFICIENCY":60},{"ANOMALY_MASTERY":34,"ANOMALY_PROFICIENCY":69},{"ANOMALY_MASTERY":39,"ANOMALY_PROFICIENCY":78},{"ANOMALY_MASTERY":43,"ANOMALY_PROFICIENCY":87},{"ANOMALY_MASTERY":48,"ANOMALY_PROFICIENCY":96}],"note":"计入满级高级属性、异常掌控，以及全队异常精通。"},{"name":"玉壶青冰","character":"青衣","base":{"IMPACT":18},"ranks":[{"IMPACT":21},{"IMPACT":26.4},{"IMPACT":31.5},{"IMPACT":36.6},{"IMPACT":42}],"note":"计入满级高级属性，以及满层冲击力；全队增伤不参与本工具排序。"},{"name":"玲珑妆匣","character":"耀嘉音","base":{"ATK_PERCENT":30},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；回能与全队增伤不参与本工具排序。"},{"name":"硫磺石","character":"「11号」","base":{"ATK_PERCENT":30},"ranks":[{"ATK_PERCENT":28},{"ATK_PERCENT":35.2},{"ATK_PERCENT":41.6},{"ATK_PERCENT":48},{"ATK_PERCENT":56}],"note":"计入满级高级属性，以及普通/冲刺/闪避反击命中后的满层攻击力。"},{"name":"福虓炉炉","character":"橘福福","base":{"ATK_PERCENT":30},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；失衡值与全队增伤不参与本工具排序。"},{"name":"索魂影眸","character":"「扳机」","base":{"CRIT_RATE":24},"ranks":[{"IMPACT":32},{"IMPACT":36},{"IMPACT":40},{"IMPACT":44},{"IMPACT":48}],"note":"计入满级高级属性，以及满层冲击力；防御降低不参与本工具排序。"},{"name":"钢铁肉垫","character":"猫又","base":{"CRIT_RATE":24},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；物理伤害和背击增伤不参与本工具排序。"},{"name":"铸梦炉歌","character":"卢西娅","base":{"HP_PERCENT":30},"ranks":[{"HP_PERCENT":15},{"HP_PERCENT":17.3},{"HP_PERCENT":19.5},{"HP_PERCENT":21.8},{"HP_PERCENT":24}],"note":"计入满级高级属性，以及全队生命值上限加成；增伤不参与本工具排序。"},{"name":"防暴者Ⅵ型","character":"朱鸢","base":{"CRIT_DMG":48},"ranks":[{"CRIT_RATE":15},{"CRIT_RATE":18.8},{"CRIT_RATE":22.6},{"CRIT_RATE":26.4},{"CRIT_RATE":30}],"note":"计入满级高级属性，以及被动暴击率。"},{"name":"霓虹妄想","character":"南宫羽","base":{"ANOMALY_MASTERY":30},"ranks":[{"ANOMALY_PROFICIENCY":150},{"ANOMALY_PROFICIENCY":172},{"ANOMALY_PROFICIENCY":195},{"ANOMALY_PROFICIENCY":217},{"ANOMALY_PROFICIENCY":241}],"note":"计入满级高级属性，以及基础+满层额外异常精通。"},{"name":"霰落星殿","character":"星见雅","base":{"CRIT_RATE":24},"ranks":[{"CRIT_DMG":50},{"CRIT_DMG":57},{"CRIT_DMG":65},{"CRIT_DMG":72},{"CRIT_DMG":80}],"note":"计入满级高级属性，以及被动暴击伤害。"},{"name":"青溟笼舍","character":"仪玄","base":{"HP_PERCENT":30},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及被动暴击率；例如 1 级提供 20% 暴击率。"},{"name":"飞鸟星梦","character":"薇薇安","base":{"ANOMALY_PROFICIENCY":90},"ranks":[{"ANOMALY_PROFICIENCY":120},{"ANOMALY_PROFICIENCY":138},{"ANOMALY_PROFICIENCY":156},{"ANOMALY_PROFICIENCY":174},{"ANOMALY_PROFICIENCY":192}],"note":"计入满级高级属性，以及以太伤害触发后的满层异常精通。"},{"name":"鳞齿寻踪","character":"希希芙","base":{"ENERGY_REGEN":60},"ranks":[{"CRIT_RATE":25},{"CRIT_RATE":28.8},{"CRIT_RATE":32.5},{"CRIT_RATE":36.3},{"CRIT_RATE":40}],"note":"计入满级高级属性，以及被动暴击率。"},{"name":"辉骑面铠","character":"星徽·比利","base":{"HP_PERCENT":30},"ranks":[{"CRIT_RATE":20},{"CRIT_RATE":23},{"CRIT_RATE":26},{"CRIT_RATE":29},{"CRIT_RATE":32}],"note":"计入满级高级属性，以及被动暴击率；例如 1 级提供 20% 暴击率。"},{"name":"仿制星徽引擎","character":"比利","base":{"ATK_PERCENT":25},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；远距物理增伤不参与本工具排序。"},{"name":"含羞恶面","character":"苍角","base":{"ATK_PERCENT":25},"ranks":[{"ATK_PERCENT":8},{"ATK_PERCENT":9.2},{"ATK_PERCENT":10.4},{"ATK_PERCENT":11.6},{"ATK_PERCENT":12.8}],"note":"计入满级高级属性，以及强化特殊技后的满层全队攻击力。"},{"name":"好斗的阿炮","character":"露西","base":{"ENERGY_REGEN":50},"ranks":[{"ATK_PERCENT":10},{"ATK_PERCENT":11.2},{"ATK_PERCENT":12.8},{"ATK_PERCENT":14.4},{"ATK_PERCENT":16}],"note":"计入满级高级属性，以及满层全队攻击力。"},{"name":"家政员","character":"可琳","base":{"ATK_PERCENT":25},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；物理伤害提升不参与本工具排序。"},{"name":"德玛拉电池Ⅱ型","character":"安比","base":{"IMPACT":15},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；电伤与回能效率不参与本工具排序。"},{"name":"比格气缸","character":"本","base":{"DEF_PERCENT":40},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性。"},{"name":"旋钻机-赤轴","character":"安东","base":{"ENERGY_REGEN":50},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；电伤不参与本工具排序。"},{"name":"维序者-特化型","character":"赛斯","base":{"ATK_PERCENT":25},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；能量回复与异常积蓄不参与本工具排序。"},{"name":"聚宝箱","character":"妮可","base":{"ENERGY_REGEN":50},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；以太伤害后的全队增伤和每秒回能不参与本工具排序。"},{"name":"轰鸣座驾","character":"派派","base":{"ATK_PERCENT":25},"ranks":[{"ATK_PERCENT":8,"ANOMALY_PROFICIENCY":40},{"ATK_PERCENT":9.2,"ANOMALY_PROFICIENCY":46},{"ATK_PERCENT":10.4,"ANOMALY_PROFICIENCY":52},{"ATK_PERCENT":11.6,"ANOMALY_PROFICIENCY":58},{"ATK_PERCENT":12.8,"ANOMALY_PROFICIENCY":64}],"note":"随机效果按攻击力与异常精通都可触发计入；实际战斗请按触发情况判断。"},{"name":"裁纸刀","character":"波可娜","base":{"IMPACT":15},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；追加攻击伤害/失衡值不参与本工具排序。"},{"name":"燔火胧夜","character":"真斗","base":{"HP_PERCENT":25},"ranks":[{"CRIT_RATE":15},{"CRIT_RATE":17.25},{"CRIT_RATE":19.5},{"CRIT_RATE":21.75},{"CRIT_RATE":24}],"note":"计入满级高级属性，以及生命值降低后的暴击率。"},{"name":"震元奇枢","character":"潘引壶","base":{"ATK_PERCENT":25},"ranks":[{},{},{},{},{}],"note":"只计入满级高级属性；伤害增加和回能不参与本工具排序。"}];
+WENGINES.push({name:'首席跟班',character:'诺姆',base:{CRIT_RATE:24},ranks:[{IMPACT:15},{IMPACT:17.25},{IMPACT:19.5},{IMPACT:21.75},{IMPACT:24}],note:'满级基础攻击 713，高级属性暴击率 24%。音擎技能提供的冲击力按音擎等级作为实战参考计入；火属性抗性无视与全队增伤仅展示，不直接并入通用评分。'});
+WENGINES.push({name:'空羽复归之诗',character:'蕾米埃尔',base:{ATK_PERCENT:36},ranks:[{ANOMALY_PROFICIENCY:96,ANOMALY_DMG_BONUS:20,SQUAD_DMG_BONUS:30},{ANOMALY_PROFICIENCY:105,ANOMALY_DMG_BONUS:23,SQUAD_DMG_BONUS:34.5},{ANOMALY_PROFICIENCY:115,ANOMALY_DMG_BONUS:26,SQUAD_DMG_BONUS:39},{ANOMALY_PROFICIENCY:125,ANOMALY_DMG_BONUS:29,SQUAD_DMG_BONUS:43.5},{ANOMALY_PROFICIENCY:135,ANOMALY_DMG_BONUS:32,SQUAD_DMG_BONUS:48}],note:'满级基础攻击 743，高级属性攻击力 36%。音擎技能“失乐园”提供异常精通；触发异化后自身属性异常伤害与全队造成伤害提升，持续 30 秒。两类增伤仅展示为实战参考，不误写入角色详情基础面板或通用伤害指数。'});
 const OCR_SCRIPT_URL = 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js';
 const OCR_WORKER_OPTIONS = {
   workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
   corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.0.0'
 };
-let state = { version: 114, discs: [], setEffects: [], characterBuilds: [], discClaims: [], claimsInitialized: true }, storagePath = '', defaultStoragePath = '', usingDefaultStoragePath = true, editingId = null, lastResults = null, lastOptimizeMode = 'MAX_CD', lastOptimizeRole = 'ATTACK', lastOcrData = null, browserTesseractPromise = null, optimizeRunToken = 0, lastClaimBuildNameByAgent = {}, modeTouchedByUser = false, pendingScanExport = null, pendingScanPreview = null;
+let state = { version: 121, discs: [], setEffects: [], characterBuilds: [], discClaims: [], claimsInitialized: true }, storagePath = '', defaultStoragePath = '', usingDefaultStoragePath = true, editingId = null, lastResults = null, lastOptimizeMode = 'MAX_CD', lastOptimizeRole = 'ATTACK', lastOcrData = null, browserTesseractPromise = null, optimizeRunToken = 0, lastClaimBuildNameByAgent = {}, modeTouchedByUser = false;
+let inventoryViewMode = localStorage.getItem('zzzInventoryViewMode') === 'table' ? 'table' : 'cards';
+let selectedInventoryDiscId = '';
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));}
 function statLabel(type){return STAT_LABELS[type]||type||'未选择';}
 function fmtNum(v,digits=1){const n=Number(v); if(!Number.isFinite(n)) return '0'; return Number.isInteger(n)?String(n):n.toFixed(digits).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');}
@@ -725,7 +893,7 @@ function formatStatValue(stat){if(!stat||!stat.type)return '-'; const unit=PERCE
 function addToStats(target, source){for(const [type,value] of Object.entries(source||{})){const n=Number(value); if(type&&Number.isFinite(n)&&Math.abs(n)>1e-9)target[type]=(target[type]||0)+n;} return target;}
 function statMapText(stats){const parts=[]; for(const type of STAT_ORDER){const value=stats?.[type]; if(value)parts.push(`${statLabel(type)} ${fmtNum(value,2)}${PERCENT_STATS.has(type)?'%':''}`);} return parts.join('，')||'无可计入属性';}
 function wEngineLabel(engine){return `${engine.name}（${engine.character}）`;}
-function characterDisplayName(c){const name=c?.fullName||c?.name||''; return c?.special?`⚠ ${name}（特殊异常→强攻）`:name;}
+function characterDisplayName(c){return c?.fullName||c?.name||'';}
 function currentWEngine(){const value=$('#wEngineSelect')?.value??''; if(value==='')return null; const idx=Number(value); return Number.isInteger(idx)?WENGINES[idx]||null:null;}
 function selectedWEngineRank(){const rank=parseInt($('#wEngineRank')?.value||'1',10); return Math.min(5,Math.max(1,Number.isFinite(rank)?rank:1));}
 function wEngineBaseAtk(engine){if(!engine)return 0; if(Object.prototype.hasOwnProperty.call(WENGINE_BASE_ATK,engine.name))return WENGINE_BASE_ATK[engine.name]; return engine.character&&engine.character.startsWith('通用')?594:713;}
@@ -739,7 +907,7 @@ function fillWEngineControls(){const sel=$('#wEngineSelect'); if(!sel)return; co
 function syncWEngineToCharacter({force=true}={}){const sel=$('#wEngineSelect'); if(!sel)return; const c=currentCharacter(); const idx=exclusiveWEngineIndexForCharacter(c); fillWEngineControls(); if(idx>=0 && force){sel.value=String(idx); updateWEngineInfo(); return true;} if(idx<0 && force && sel.value===''){updateWEngineInfo();} return false;}
 function updateWEngineInfo(){const el=$('#wEngineInfo'); if(!el)return; const engine=currentWEngine(); const c=currentCharacter(); if(!engine){const cText=c?`当前角色「${c.name}」暂未自动匹配到专属音擎，或你选择了不计入音擎；可以从下拉菜单手动选择其他角色音擎进行测试。`:'未选择音擎：最终面板只计算基础 5/50、角色成长/核心、驱动盘主副属性与2件套静态效果。'; el.textContent=cText; return;} const rank=selectedWEngineRank(); const panel=wEnginePanelStats(engine); const combat=wEngineCombatStats(engine,rank); const relation=c?(sameAgentName(engine.character,c.name)?'已自动匹配当前代理人专武。':'当前选择的是其他代理人的音擎，请确认这是你想测试的搭配。'):'已选择音擎。'; el.innerHTML=`${escapeHtml(WENGINE_EFFECT_MODE_TEXT)}<br><strong>${escapeHtml(wEngineLabel(engine))} · ${rank}级：</strong><br>${escapeHtml(relation)}<br>面板计入：${escapeHtml(statMapText(panel))}<br>实战/部分排序参考：${escapeHtml(statMapText(combat))}<br>${escapeHtml(engine.note||'')}`;}
 function currentCharacter(){const value=$('#characterSelect')?.value??''; const idx=Number(value); return Number.isInteger(idx)?CHARACTERS[idx]||null:null;}
-const ELEMENT_LABELS={FIRE:'火',ICE:'冰',ELECTRIC:'电',PHYSICAL:'物理',ETHER:'以太',WIND:'风'};
+const ELEMENT_LABELS={FIRE:'火',ICE:'冰',ELECTRIC:'电',PHYSICAL:'物理',ETHER:'以太',WIND:'风',LUMIFLUX:'流明'};
 const CORE_LEVEL_ORDER=['0','A','B','C','D','E','F'];
 function coreLevelIndex(value){const idx=CORE_LEVEL_ORDER.indexOf(String(value||'F').toUpperCase()); return idx>=0?idx:6;}
 function defaultCoreLevelForCharacter(c){return c?.coreDefault||'F';}
@@ -759,25 +927,23 @@ function characterStats(c,levelIndex=selectedCoreLevelIndex()){
   }
   addToStats(out,{ANOMALY_PROFICIENCY:c.baseAnomalyProficiency||0});
   const baseRatio=coreBaseRatio(levelIndex), advRatio=coreAdvancedRatio(levelIndex);
-  addToStats(out,{BASE_ATK:(c.baseAtkBonus||0)*baseRatio,BASE_HP:(c.baseHPBonus||0)*baseRatio,SHEER_FORCE_FLAT:(c.flatSheer||0)*baseRatio});
+  addToStats(out,{BASE_ATK:(c.baseAtkBonus||0)*baseRatio,BASE_HP:(c.baseHPBonus||0)*baseRatio,BASE_DEF:(c.baseDefBonus||0)*baseRatio,SHEER_FORCE_FLAT:(c.flatSheer||0)*baseRatio});
   addToStats(out,scaledStats(c.extra||{},advRatio));
   return out;
 }
-function characterPanelBase(c,levelIndex=selectedCoreLevelIndex()){if(!c)return {hp:0,atk:0,def:0}; const baseRatio=coreBaseRatio(levelIndex); const specialBaseAtk=(isPyrois(c)&&levelIndex===0&&c.unleveledPanel)?Number(c.unleveledPanel.baseAtkExtra||0):(c.baseAtkBonus||0)*baseRatio; return {hp:(c.hp||0)+(c.baseHPBonus||0)*baseRatio,atk:(c.atk||0)+specialBaseAtk,def:c.def||0};}
-function characterLabel(c){if(!c)return '未选择代理人'; const panel=characterPanelBase(c); const special=c.special?'（特殊异常→强攻）':''; const element=c.element?`｜${ELEMENT_LABELS[c.element]||c.element}属性`:''; return `${c.fullName||c.name}${special}${element}｜60级 / ${coreLevelLabel()} 面板 HP ${fmtNum(panel.hp,0)} / 攻击 ${fmtNum(panel.atk,0)} / 防御 ${fmtNum(panel.def,0)}`;}
-function fillCharacterControls({autoEngine=true}={}){const sel=$('#characterSelect'); if(!sel)return; const role=$('#roleSystem')?.value||'ATTACK'; const prev=currentCharacter(); const prevKey=prev?`${prev.name}|${prev.role}|${prev.special?'1':'0'}`:''; const options=CHARACTERS.map((c,i)=>({c,i})).filter(x=>x.c.role===role).sort((a,b)=>releaseOrderOfCharacter(b.c)-releaseOrderOfCharacter(a.c)||String(a.c.name).localeCompare(String(b.c.name),'zh-CN')); sel.innerHTML=options.map(x=>`<option value="${x.i}">${escapeHtml(characterDisplayName(x.c))}</option>`).join(''); const hit=options.find(x=>`${x.c.name}|${x.c.role}|${x.c.special?'1':'0'}`===prevKey)||options[0]; if(hit)sel.value=String(hit.i); syncCoreLevelToCharacter({force:true}); updateCharacterInfo(); if(autoEngine)syncWEngineToCharacter({force:true});}
+function characterPanelBase(c,levelIndex=selectedCoreLevelIndex()){if(!c)return {hp:0,atk:0,def:0}; const baseRatio=coreBaseRatio(levelIndex); const specialBaseAtk=(isPyrois(c)&&levelIndex===0&&c.unleveledPanel)?Number(c.unleveledPanel.baseAtkExtra||0):(c.baseAtkBonus||0)*baseRatio; return {hp:(c.hp||0)+(c.baseHPBonus||0)*baseRatio,atk:(c.atk||0)+specialBaseAtk,def:(c.def||0)+(c.baseDefBonus||0)*baseRatio};}
+function characterLabel(c){if(!c)return '未选择代理人'; const panel=characterPanelBase(c); const element=c.element?`｜${ELEMENT_LABELS[c.element]||c.element}属性`:''; return `${c.fullName||c.name}${element}｜60级 / ${coreLevelLabel()} 面板 HP ${fmtNum(panel.hp,0)} / 攻击 ${fmtNum(panel.atk,0)} / 防御 ${fmtNum(panel.def,0)}`;}
+function fillCharacterControls({autoEngine=true}={}){const sel=$('#characterSelect'); if(!sel)return; const role=$('#roleSystem')?.value||'ATTACK'; const prev=currentCharacter(); const prevKey=prev?`${prev.name}|${prev.role}`:''; const options=CHARACTERS.map((c,i)=>({c,i})).filter(x=>x.c.role===role).sort((a,b)=>releaseOrderOfCharacter(b.c)-releaseOrderOfCharacter(a.c)||String(a.c.name).localeCompare(String(b.c.name),'zh-CN')); sel.innerHTML=options.map(x=>`<option value="${x.i}">${escapeHtml(characterDisplayName(x.c))}</option>`).join(''); const hit=options.find(x=>`${x.c.name}|${x.c.role}`===prevKey)||options[0]; if(hit)sel.value=String(hit.i); syncCoreLevelToCharacter({force:true}); updateCharacterInfo(); if(autoEngine)syncWEngineToCharacter({force:true});}
 function onCharacterChanged(){syncCoreLevelToCharacter({force:true}); updateCharacterInfo(); syncWEngineToCharacter({force:true});}
 function updateCharacterInfo(){
   const el=$('#characterInfo');
   if(!el)return;
   const c=currentCharacter();
-  const sel=$('#characterSelect');
-  if(sel)sel.classList.toggle('specialSelected',!!c?.special);
   if(!c){el.textContent='当前职业暂无可选代理人。'; return;}
   const levelIdx=selectedCoreLevelIndex();
   const stats=characterStats(c,levelIdx);
   const panel=characterPanelBase(c,levelIdx);
-  const roleText={ATTACK:'强攻',RUPTURE:'命破',ANOMALY:'异常',STUN:'击破',SUPPORT:'辅助'}[c.role]||c.role;
+  const roleText={ATTACK:'强攻',RUPTURE:'命破',ANOMALY:'异常',STUN:'击破',DEFENSE:'防护',SUPPORT:'辅助'}[c.role]||c.role;
   const identity=[c.rank?`${c.rank}级`:null,c.element?`${ELEMENT_LABELS[c.element]||c.element}·${roleText}`:roleText,c.faction||null].filter(Boolean).join('｜');
   const totalCR=5+Number(stats.CRIT_RATE||0), totalCD=50+Number(stats.CRIT_DMG||0);
   const totalAP=Number(stats.ANOMALY_PROFICIENCY||0);
@@ -788,10 +954,9 @@ function updateCharacterInfo(){
   if(c.baseAnomalyMastery)details.push(`异常掌控 ${fmtNum(c.baseAnomalyMastery,0)}`);
   if(c.baseEnergyRegen)details.push(`初始能量自动回复 ${fmtNum(c.baseEnergyRegen,2)}`);
   const sheerText=c.role==='RUPTURE'?`<br>命破贯穿力换算：最终攻击×30% + 最终生命×${fmtNum(c.hpToSheerRatio||0,2)}${c.flatSheer?` + ${fmtNum(c.flatSheer,1)}`:''}`:'';
-  const specialText=c.special?`<br><span class="specialText">${escapeHtml(c.specialNote||'特殊代理人：按当前职业配装')}</span>`:'';
   const panelNote=(isPyrois(c)&&levelIdx===0&&c.unleveledPanel?.note)?`<br><span class="fine">${escapeHtml(c.unleveledPanel.note)}</span>`:'';
   const coreText=c.coreDetail?`<br><strong>3.0 机制录入：</strong>${escapeHtml(c.coreDetail)}`:'';
-  el.innerHTML=`<strong>${escapeHtml(c.fullName||c.name)}</strong>（${escapeHtml(identity)}）<br>60级 / ${escapeHtml(coreLevelLabel())}：${escapeHtml(details.join('；'))}<br>拆分计入项：${escapeHtml(statMapText(stats))}${panelNote}${sheerText}${coreText}${specialText}`;
+  el.innerHTML=`<strong>${escapeHtml(c.fullName||c.name)}</strong>（${escapeHtml(identity)}）<br>60级 / ${escapeHtml(coreLevelLabel())}：${escapeHtml(details.join('；'))}<br>拆分计入项：${escapeHtml(statMapText(stats))}${panelNote}${sheerText}${coreText}`;
 }
 function isAnomalyMode(mode){return ['ANOMALY_AP','ANOMALY_ATK','ANOMALY_WORDS'].includes(mode);}
 function toast(msg){const el=$('#toast'); el.textContent=msg; el.style.display='block'; clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.style.display='none',2400);}
@@ -942,7 +1107,7 @@ function clearInventoryFilters(){
   toast('库存筛选条件已清空');
 }
 function discStats(d){const out=[]; const main=mainStatOf(d); if(main.type)out.push(main); out.push(...subStatsOf(d)); return out;}
-async function fetchJSON(url,options={}){if(url.startsWith('/api/scan/'))options={...options,headers:{...(options.headers||{}),'X-ZZZ-Import-Token':SCAN_IMPORT_TOKEN}}; const res=await fetch(url,options); const text=await res.text(); let data=null; try{data=text?JSON.parse(text):null;}catch{data=text;} if(!res.ok)throw new Error(data&&data.error?data.error:`请求失败：${res.status}`); return data;}
+async function fetchJSON(url,options={}){const res=await fetch(url,options); const text=await res.text(); let data=null; try{data=text?JSON.parse(text):null;}catch{data=text;} if(!res.ok)throw new Error(data&&data.error?data.error:`请求失败：${res.status}`); return data;}
 function updateStorageDisplay(data={}){
   storagePath=data.storagePath||storagePath||'';
   defaultStoragePath=data.defaultStoragePath||defaultStoragePath||'';
@@ -980,7 +1145,7 @@ async function resetStoragePath(){
   $('#statusText').textContent='已恢复默认路径';
   toast('已恢复默认存储位置');
 }
-async function saveState(){normalizeCharacterBuilds(); state.version=115; await fetchJSON('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)}); $('#statusText').textContent=`已保存：${new Date().toLocaleTimeString()}`;}
+async function saveState(){normalizeCharacterBuilds(); state.version=121; await fetchJSON('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(state)}); $('#statusText').textContent=`已保存：${new Date().toLocaleTimeString()}`;}
 function fillStatSelect(select,opts={}){const previous=select.value; select.innerHTML=''; if(opts.blank!==false){const blank=document.createElement('option'); blank.value=''; blank.textContent='不选择'; select.appendChild(blank);} for(const t of STAT_ORDER){const opt=document.createElement('option'); opt.value=t; opt.textContent=statLabel(t); select.appendChild(opt);} if(STAT_ORDER.includes(previous))select.value=previous;}
 function setupStatRows(){const box=$('#statsContainer'); box.innerHTML=''; for(let i=0;i<4;i++){const row=document.createElement('div'); row.className='statRow'; row.innerHTML='<select class="subStatType"></select><input class="subStatValue" type="number" step="0.1" placeholder="副词条数值" />'; box.appendChild(row); fillStatSelect(row.querySelector('select'),{blank:true});}}
 function fillMainStatSelect(selected='',opts={}){const slot=intNum('slot',1); const allowed=SLOT_MAIN_STAT_OPTIONS[slot]||[]; const select=$('#mainStatType'); select.innerHTML=''; const options=allowed.slice(); if(opts.blank){const blank=document.createElement('option'); blank.value=''; blank.textContent='请手动确认'; select.appendChild(blank);} if(selected&&!options.includes(selected))options.unshift(selected); for(const t of options){const opt=document.createElement('option'); opt.value=t; opt.textContent=statLabel(t)+(!allowed.includes(t)?'（不在当前槽位池，请确认）':''); select.appendChild(opt);} if(opts.blank&&!selected)select.value=''; else select.value=(selected&&options.includes(selected))?selected:(options[0]||''); if(!selected&&!opts.blank)applyMainStatDefault(true);}
@@ -996,16 +1161,17 @@ function activeTargetFieldsForRole(role){
   role=String(role||'ATTACK').toUpperCase();
   if(role==='RUPTURE')return new Set(['crit','critDmg','hp']);
   if(role==='ANOMALY')return new Set(['atk','ap']);
+  if(role==='DEFENSE')return new Set(['atk','hp','def']);
   if(role==='STUN'||role==='SUPPORT')return new Set(['crit','critDmg','atk','hp','ap']);
   return new Set(['crit','critDmg','atk']);
 }
 function targetFieldValue(field){
-  const id={crit:'targetCritRate',critDmg:'targetCritDmg',atk:'targetFinalAttack',hp:'targetFinalHP',ap:'targetAnomalyProficiency'}[field];
+  const id={crit:'targetCritRate',critDmg:'targetCritDmg',atk:'targetFinalAttack',hp:'targetFinalHP',def:'targetFinalDefense',ap:'targetAnomalyProficiency'}[field];
   return id?Number($('#'+id)?.value||0):0;
 }
 function enteredTargetCount(){
   let count=0;
-  for(const field of ['crit','critDmg','atk','hp','ap']){
+  for(const field of ['crit','critDmg','atk','hp','def','ap']){
     if(Math.abs(targetFieldValue(field))>1e-9)count++;
   }
   return count;
@@ -1100,11 +1266,11 @@ async function enhanceWeakOcrWithBrowser(file,data){if(!ocrNeedsBrowserFallback(
 async function recognizeOcrFile(file){if(!file)return; if(file.type&&!file.type.startsWith('image/')){alert('请选择图片文件。'); return;} const url=URL.createObjectURL(file); $('#ocrPreview').src=url; $('#ocrPreviewWrap').classList.remove('hidden'); setOcrWorking('正在识别，请稍候...'); try{const fd=new FormData(); fd.append('image',file,file.name||'clipboard.png'); let data; try{data=await fetchJSON('/api/ocr',{method:'POST',body:fd}); data=await enhanceWeakOcrWithBrowser(file,data);}catch(serverErr){data=await recognizeOcrFileWithBrowser(file,serverErr);} lastOcrData=data; renderOcrResult(data); applyOcrToForm(data); toast('识别结果已填入表单，请确认后保存');}catch(err){$('#ocrResult').innerHTML=`<span class="pill bad">识别失败</span><div class="fine" style="margin-top:8px">${escapeHtml(err.message)}</div><div class="fine" style="margin-top:8px">可以先安装 Tesseract 中文 OCR，或保持联网后重试浏览器 OCR；也可以按识别预览手动录入。</div>`;}finally{setTimeout(()=>URL.revokeObjectURL(url),5000);}}
 function handlePasteImage(ev){const items=Array.from(ev.clipboardData?.items||[]); const item=items.find(x=>x.type&&x.type.startsWith('image/')); if(!item)return false; const file=item.getAsFile(); if(file){ev.preventDefault(); ev.stopPropagation(); recognizeOcrFile(file); return true;} return false;}
 function setupOcrEvents(){const zone=$('#ocrDropZone'); $('#ocrImageFile').addEventListener('change',ev=>{const file=ev.target.files&&ev.target.files[0]; if(file)recognizeOcrFile(file); ev.target.value='';}); $('#clearOcrBtn').addEventListener('click',clearOCR); zone.addEventListener('paste',handlePasteImage); for(const evName of ['dragenter','dragover'])zone.addEventListener(evName,ev=>{ev.preventDefault(); zone.classList.add('dragover');}); for(const evName of ['dragleave','drop'])zone.addEventListener(evName,()=>zone.classList.remove('dragover')); zone.addEventListener('drop',ev=>{ev.preventDefault(); const file=ev.dataTransfer?.files&&ev.dataTransfer.files[0]; if(file)recognizeOcrFile(file);}); document.addEventListener('paste',ev=>{const tag=(ev.target?.tagName||'').toUpperCase(); if(['INPUT','TEXTAREA','SELECT'].includes(tag))return; handlePasteImage(ev);});}
-function discFromForm(){const id=$('#discId').value||newId(); const setName=selectedSetName(); const slot=intNum('slot',1); const rarity='S'; const level=15; $('#rarity').value='S'; $('#level').value='15'; if(!setName){alert('请选择或填写套装名'); return null;} const mainStat=mainStatFromForm(); if(!mainStat)return null; const subStats=subStatsFromForm(mainStat.type); if(!subStats)return null; const existing=state.discs.find(d=>d.id===id); const now=new Date().toISOString(); const stats=[mainStat,...subStats]; return {id,setName,slot,rarity,level,stats,mainStat,subStats,locked:false,discarded:false,equippedBy:'',note:'',createdAt:existing?.createdAt||now,updatedAt:now};}
+function discFromForm(){const id=$('#discId').value||newId(); const setName=selectedSetName(); const slot=intNum('slot',1); const rarity='S'; const level=15; $('#rarity').value='S'; $('#level').value='15'; if(!setName){alert('请选择或填写套装名'); return null;} let mainStat=mainStatFromForm(); if(!mainStat)return null; let subStats=subStatsFromForm(mainStat.type); if(!subStats)return null; const existing=state.discs.find(d=>d.id===id); const oldMain=existing?.mainStat; if(oldMain?.type===mainStat.type)mainStat={...oldMain,...mainStat}; const oldSubs=existing?.subStats||[]; subStats=subStats.map(stat=>{const old=oldSubs.find(item=>item?.type===stat.type); return old?{...old,...stat}:stat;}); const now=new Date().toISOString(); const stats=[mainStat,...subStats]; return {...(existing||{}),id,setName,slot,rarity,level,stats,mainStat,subStats,locked:existing?.locked||false,discarded:existing?.discarded||false,equippedBy:existing?.equippedBy||'',note:existing?.note||'',createdAt:existing?.createdAt||now,updatedAt:now};}
 async function saveDiscFromForm(ev){ev.preventDefault(); const disc=discFromForm(); if(!disc)return; const keepSet=disc.setName; const idx=state.discs.findIndex(d=>d.id===disc.id); if(idx>=0)state.discs[idx]=disc; else state.discs.push(disc); await saveState(); resetDiscForm(keepSet); renderAll(); refreshSetControls(keepSet); toast('驱动盘已保存');}
 function resetDiscForm(keepSetName=''){clearOcrDoubtHighlights(); const keep=keepSetName||selectedSetName(); editingId=null; $('#discId').value=''; $('#discForm').reset(); $('#rarity').value='S'; $('#level').value='15'; setupStatRows(); refreshSetControls(keep); fillMainStatSelect(); $('#saveDiscBtn').textContent='保存驱动盘';}
 function editDisc(id){clearOcrDoubtHighlights(); const d=state.discs.find(x=>x.id===id); if(!d)return; editingId=id; $('#discId').value=d.id; refreshSetControls(d.setName||''); $('#slot').value=String(d.slot||1); $('#rarity').value='S'; $('#level').value='15'; const main=mainStatOf(d); fillMainStatSelect(main.type||''); $('#mainStatValue').value=main.type?(main.value??''):(DEFAULT_MAIN_STAT_VALUES[$('#mainStatType').value]??''); validateMainStatFormValue({correct:true,silent:true}); setupStatRows(); const rows=$$('#statsContainer .statRow'); subStatsOf(d).slice(0,4).forEach((s,i)=>{rows[i].querySelector('.subStatType').value=s.type||''; rows[i].querySelector('.subStatValue').value=s.value??'';}); $('#saveDiscBtn').textContent='更新驱动盘'; location.hash='#input';}
-async function deleteDisc(id){const d=state.discs.find(x=>x.id===id); if(!d)return; if(!confirm(`确定删除 ${d.slot} 号位 ${d.setName} 吗？`))return; state.discs=state.discs.filter(x=>x.id!==id); ensureCharacterBuilds(); state.characterBuilds=state.characterBuilds.map(b=>({...b,discIds:(b.discIds||[]).filter(x=>String(x)!==String(id)),updatedAt:new Date().toISOString()})).filter(b=>(b.discIds||[]).length); state.discClaims=(state.discClaims||[]).filter(c=>String(c.discId)!==String(id)); await saveState(); renderAll(); toast('已删除');}
+async function deleteDisc(id){const d=state.discs.find(x=>x.id===id); if(!d)return; if(!confirm(`确定删除 ${d.slot} 号位 ${d.setName} 吗？`))return; state.discs=state.discs.filter(x=>x.id!==id); ensureCharacterBuilds(); state.characterBuilds=state.characterBuilds.map(b=>({...b,discIds:(b.discIds||[]).filter(x=>String(x)!==String(id)),updatedAt:new Date().toISOString()})).filter(b=>(b.discIds||[]).length); state.discClaims=(state.discClaims||[]).filter(c=>String(c.discId)!==String(id)); if(String(selectedInventoryDiscId)===String(id))selectedInventoryDiscId=''; await saveState(); renderAll(); toast('已删除');}
 async function removeDiscOwner(id){
   const d=state.discs.find(x=>String(x.id)===String(id)); if(!d)return;
   const claim=claimForDisc(id);
@@ -1131,13 +1297,66 @@ function discMatchesFilters(d){
   return true;
 }
 function ownerPillsHtml(d){const claim=claimForDisc(d.id); if(!claim)return '<span class="muted">-</span>'; return `<span class="pill assignedPill">${escapeHtml(claim.buildName||claim.character)}</span>`;}
-function renderInventory(){
-  refreshAgentFilterControls();
-  const selectedBuildName=$('#filterAgent')?.value||'';
-  const discs=(state.discs||[]).filter(discMatchesFilters).sort((a,b)=>(a.slot-b.slot)||String(a.setName).localeCompare(String(b.setName),'zh-CN')||(b.level-a.level));
+const INVENTORY_SUB_STAT_LABELS={CRIT_RATE:'暴击',CRIT_DMG:'暴伤',ATK_PERCENT:'攻击%',HP_PERCENT:'生命%',DEF_PERCENT:'防御%',ANOMALY_PROFICIENCY:'精通',PEN_FLAT:'穿透',PEN_RATIO:'穿透%',ATK_FLAT:'攻击',HP_FLAT:'生命',DEF_FLAT:'防御',ANOMALY_MASTERY:'掌控%',ENERGY_REGEN:'回能%',IMPACT:'冲击%'};
+function inventorySubStatText(stat){if(!stat||!stat.type)return '—'; const label=INVENTORY_SUB_STAT_LABELS[stat.type]||statLabel(stat.type); return `${label}${fmtNum(stat.value,2)}`;}
+function normalizedAgentAssetName(name){
+  const raw=String(name||'').trim();
+  return (window.AGENT_ASSET_ALIASES||{})[raw]||raw;
+}
+function inventoryAssetCircleHtml(kind,name,alt){
+  const map=kind==='agent'?(window.AGENT_ASSETS||{}):(window.DRIVE_DISC_ASSETS||{});
+  const key=kind==='agent'?normalizedAgentAssetName(name):String(name||'').trim();
+  const src=map[key]||'';
+  const layout=kind==='disc'&&(key==='谶羽之誓'||key==='荆棘玫瑰')?' data-asset-layout="precut"':'';
+  const focus=kind==='agent'?(window.AGENT_ASSET_FOCUS||{})[key]:null;
+  const focusStyle=focus&&Number.isFinite(Number(focus.left))&&Number.isFinite(Number(focus.top))?` style="--agent-image-left:${Number(focus.left)}%;--agent-image-top:${Number(focus.top)}%"`:'';
+  const image=src?`<img src="${escapeHtml(src)}" alt="${escapeHtml(alt||key)}" decoding="async">`:'';
+  return `<span class="inventoryAssetCircle" data-asset-kind="${kind}"${layout}${focusStyle}><span class="inventoryAssetFallback" aria-hidden="true">?</span>${image}</span>`;
+}
+function activateInventoryImages(root=document){
+  root.querySelectorAll('.inventoryAssetCircle img').forEach(img=>{
+    const circle=img.closest('.inventoryAssetCircle');
+    const markLoaded=()=>circle?.classList.add('loaded');
+    const markFailed=()=>circle?.classList.remove('loaded');
+    img.addEventListener('load',markLoaded,{once:true});
+    img.addEventListener('error',markFailed,{once:true});
+    if(img.complete){if(img.naturalWidth>0)markLoaded(); else markFailed();}
+  });
+}
+function filteredInventoryDiscs(){
+  return (state.discs||[]).filter(discMatchesFilters).sort((a,b)=>(Number(a.slot||0)-Number(b.slot||0))||String(a.setName).localeCompare(String(b.setName),'zh-CN')||(Number(b.level||0)-Number(a.level||0)));
+}
+function renderInventorySummary(discs,selectedBuildName){
   const build=selectedBuildName?buildByName(selectedBuildName):null;
   const buildText=build?`；已存套装「${build.name}」显示 ${discs.length}/${(build.discIds||[]).length} 个驱动盘`:'';
   $('#inventorySummary').textContent=`显示 ${discs.length} / ${state.discs.length} 个${buildText}`;
+}
+function renderInventoryCards(discs){
+  const rows=discs.map(d=>{
+    const subs=subStatsOf(d).slice(0,4);
+    const subCells=Array.from({length:4},(_,i)=>{
+      const stat=subs[i];
+      if(!stat)return '<span class="inventoryCardSubStat empty">—</span>';
+      const text=inventorySubStatText(stat);
+      return `<span class="inventoryCardSubStat" title="${escapeHtml(text)}">${escapeHtml(text)}</span>`;
+    }).join('');
+    const slot=Number(d.slot)>=1&&Number(d.slot)<=6?String(Number(d.slot)):'?';
+    const claim=claimForDisc(d.id);
+    const ownerTitle=claim?`本地方案占用：${claim.buildName||claim.character||'未命名套装'}`:'';
+    const owner=claim?`<span class="inventoryOwnerAvatar" title="${escapeHtml(ownerTitle)}">${inventoryAssetCircleHtml('agent',claim.character,claim.character||'占用代理人')}</span>`:'';
+    const selected=String(selectedInventoryDiscId)===String(d.id)?' selected':'';
+    return `<article class="inventoryDiscCard${selected}" data-disc-id="${escapeHtml(d.id)}" tabindex="0" role="button" aria-label="查看 ${escapeHtml(d.setName)} ${slot} 号位详情">
+      <span class="inventorySlotBadge" title="槽位 ${slot}">${slot}</span>
+      ${owner}
+      <div class="inventoryDiscArt">${inventoryAssetCircleHtml('disc',d.setName,d.setName||'驱动盘')}</div>
+      <div class="inventoryCardSetName" title="${escapeHtml(d.setName||'未命名套装')}">${escapeHtml(d.setName||'未命名套装')}</div>
+      <div class="inventoryCardSubStats" aria-label="四条副属性">${subCells}</div>
+    </article>`;
+  }).join('');
+  $('#inventoryCardGrid').innerHTML=rows||'<div class="inventoryEmpty">暂无符合条件的驱动盘。<br>可以清空选择条件，或先在上方录入。</div>';
+  activateInventoryImages($('#inventoryCardGrid'));
+}
+function renderInventoryTable(discs,selectedBuildName){
   const rows=discs.map(d=>{
     const main=mainStatOf(d);
     const subHtml=subStatsOf(d).map(s=>`<span class="pill">${escapeHtml(formatStatValue(s))}</span>`).join('')||'<span class="muted">无</span>';
@@ -1145,6 +1364,66 @@ function renderInventory(){
     return `<tr><td>${d.slot}</td><td>${escapeHtml(d.setName)}</td><td><span class="pill good">${escapeHtml(formatStatValue(main))}</span></td><td>${subHtml}</td><td>${ownerCellHtml(d,selectedBuildName)}</td><td>S / +15</td><td><div class="actions"><button class="small" data-action="edit" data-id="${escapeHtml(d.id)}">编辑</button><button class="small" data-action="copy" data-id="${escapeHtml(d.id)}">复制</button><button class="small" data-action="removeOwner" data-id="${escapeHtml(d.id)}" ${hasOwner?'':'disabled'}>移除</button><button class="small danger" data-action="delete" data-id="${escapeHtml(d.id)}">删除</button></div></td></tr>`;
   }).join('');
   $('#inventoryBody').innerHTML=rows||'<tr><td colspan="7" class="muted">暂无符合条件的驱动盘。可以清空选择条件，或先在上方录入。</td></tr>';
+}
+function renderInventoryDetail(discs){
+  let disc=selectedInventoryDiscId?(state.discs||[]).find(d=>String(d.id)===String(selectedInventoryDiscId)):null;
+  if(disc&&!discs.some(d=>String(d.id)===String(disc.id))){selectedInventoryDiscId=''; disc=null;}
+  if(!disc){
+    $('#inventoryDetailDrawer').innerHTML='<div class="inventoryDetailPlaceholder"><div><strong>驱动盘详情</strong><br>点击左侧任意卡片查看完整属性和管理操作。</div></div>';
+    return;
+  }
+  const main=mainStatOf(disc);
+  const subs=subStatsOf(disc);
+  const claim=claimForDisc(disc.id);
+  const slot=Number(disc.slot)>=1&&Number(disc.slot)<=6?String(Number(disc.slot)):'?';
+  const owner=claim?`<div class="inventoryDetailOwner">${inventoryAssetCircleHtml('agent',claim.character,claim.character||'占用代理人')}<div><strong>${escapeHtml(claim.character||'未知代理人')}</strong><div class="fine">本地方案占用：${escapeHtml(claim.buildName||claim.character||'未命名套装')}</div></div></div>`:'<span class="muted">无本地方案占用</span>';
+  const subHtml=`<div class="inventoryDetailSubStats">${Array.from({length:4},(_,i)=>{
+    const stat=subs[i];
+    return stat
+      ? `<span class="pill inventoryDetailSubStat">${i+1}. ${escapeHtml(formatStatValue(stat))}</span>`
+      : `<span class="pill inventoryDetailSubStat empty">${i+1}. —</span>`;
+  }).join('')}</div>`;
+  $('#inventoryDetailDrawer').innerHTML=`
+    <div class="inventoryDetailHero">
+      ${inventoryAssetCircleHtml('disc',disc.setName,disc.setName||'驱动盘')}
+      <div><div class="inventoryDetailTitle">${escapeHtml(disc.setName||'未命名套装')}</div><div class="fine">${slot} 号位 · S 级 · +15</div></div>
+    </div>
+    <div class="inventoryDetailStats">
+      <div class="inventoryDetailRow"><strong>主属性</strong><span class="pill good inventoryDetailPrimaryStat">${escapeHtml(formatStatValue(main))}</span></div>
+      <div class="inventoryDetailRow"><strong>副属性</strong>${subHtml}</div>
+      <div class="inventoryDetailRow"><strong>归属</strong>${owner}</div>
+    </div>
+    <div class="actions" style="margin-top:12px">
+      <button class="small" data-action="edit" data-id="${escapeHtml(disc.id)}">编辑</button>
+      <button class="small" data-action="copy" data-id="${escapeHtml(disc.id)}">复制</button>
+      <button class="small" data-action="removeOwner" data-id="${escapeHtml(disc.id)}" ${claim?'':'disabled'}>移除归属</button>
+      <button class="small danger" data-action="delete" data-id="${escapeHtml(disc.id)}">删除</button>
+    </div>`;
+  activateInventoryImages($('#inventoryDetailDrawer'));
+}
+function updateInventoryViewVisibility(){
+  const cards=inventoryViewMode==='cards';
+  $('#inventoryCardsView').classList.toggle('hidden',!cards);
+  $('#inventoryTableWrap').classList.toggle('hidden',cards);
+  $('#inventoryCardsViewBtn').classList.toggle('active',cards);
+  $('#inventoryTableViewBtn').classList.toggle('active',!cards);
+  $('#inventoryCardsViewBtn').setAttribute('aria-pressed',String(cards));
+  $('#inventoryTableViewBtn').setAttribute('aria-pressed',String(!cards));
+}
+function setInventoryViewMode(mode){
+  inventoryViewMode=mode==='table'?'table':'cards';
+  localStorage.setItem('zzzInventoryViewMode',inventoryViewMode);
+  renderInventory();
+}
+function renderInventory(){
+  refreshAgentFilterControls();
+  const selectedBuildName=$('#filterAgent')?.value||'';
+  const discs=filteredInventoryDiscs();
+  renderInventorySummary(discs,selectedBuildName);
+  renderInventoryCards(discs);
+  renderInventoryTable(discs,selectedBuildName);
+  renderInventoryDetail(discs);
+  updateInventoryViewVisibility();
 }
 async function runOptimize(){
   if((state.discs||[]).length<6){alert('库存至少需要每个槽位都有一个驱动盘。'); return;}
@@ -1166,12 +1445,14 @@ async function runOptimize(){
     const targetCritDmg=num('targetCritDmg',0);
     const targetFinalAttack=num('targetFinalAttack',0);
     const targetFinalHp=num('targetFinalHP',0);
+    const targetFinalDefense=num('targetFinalDefense',0);
     const targetAnomalyProficiency=num('targetAnomalyProficiency',0);
-    const wantedWeights=role==='ANOMALY'?{ANOMALY_PROFICIENCY:1,ATK_PERCENT:1}:role==='RUPTURE'?{CRIT_RATE:1,CRIT_DMG:1,HP_PERCENT:1,HP_FLAT:0.35,ATK_PERCENT:0.35,ATK_FLAT:0.15}:role==='STUN'?{IMPACT:1,ENERGY_REGEN:0.7,CRIT_RATE:0.65,CRIT_DMG:0.45,ATK_PERCENT:0.75,HP_PERCENT:0.45,ATK_FLAT:0.2,HP_FLAT:0.15,ANOMALY_PROFICIENCY:0.25}:role==='SUPPORT'?{ENERGY_REGEN:1,ATK_PERCENT:0.9,HP_PERCENT:0.7,CRIT_RATE:0.55,CRIT_DMG:0.45,ANOMALY_PROFICIENCY:0.45,ATK_FLAT:0.2,HP_FLAT:0.15}:{CRIT_RATE:1,CRIT_DMG:1,ATK_PERCENT:1,ATK_FLAT:0.35};
+    const wantedWeights=role==='ANOMALY'?{ANOMALY_PROFICIENCY:1,ATK_PERCENT:1}:role==='RUPTURE'?{CRIT_RATE:1,CRIT_DMG:1,HP_PERCENT:1,HP_FLAT:0.35,ATK_PERCENT:0.35,ATK_FLAT:0.15}:role==='STUN'?{IMPACT:1,ENERGY_REGEN:0.7,CRIT_RATE:0.65,CRIT_DMG:0.45,ATK_PERCENT:0.75,HP_PERCENT:0.45,ATK_FLAT:0.2,HP_FLAT:0.15,ANOMALY_PROFICIENCY:0.25}:role==='DEFENSE'?{DEF_PERCENT:1,DEF_FLAT:0.35,HP_PERCENT:0.8,HP_FLAT:0.2,ATK_PERCENT:0.75,ATK_FLAT:0.2,IMPACT:0.8,ENERGY_REGEN:0.7,ANOMALY_PROFICIENCY:0.35}:role==='SUPPORT'?{ENERGY_REGEN:1,ATK_PERCENT:0.9,HP_PERCENT:0.7,CRIT_RATE:0.55,CRIT_DMG:0.45,ANOMALY_PROFICIENCY:0.45,ATK_FLAT:0.2,HP_FLAT:0.15}:{CRIT_RATE:1,CRIT_DMG:1,ATK_PERCENT:1,ATK_FLAT:0.35};
     if(targetCritRate>0)wantedWeights.CRIT_RATE=Math.max(wantedWeights.CRIT_RATE||0,1);
     if(targetCritDmg>0)wantedWeights.CRIT_DMG=Math.max(wantedWeights.CRIT_DMG||0,1);
     if(targetFinalAttack>0){wantedWeights.ATK_PERCENT=Math.max(wantedWeights.ATK_PERCENT||0,1); wantedWeights.ATK_FLAT=Math.max(wantedWeights.ATK_FLAT||0,0.25);}
     if(targetFinalHp>0){wantedWeights.HP_PERCENT=Math.max(wantedWeights.HP_PERCENT||0,1); wantedWeights.HP_FLAT=Math.max(wantedWeights.HP_FLAT||0,0.25);}
+    if(targetFinalDefense>0){wantedWeights.DEF_PERCENT=Math.max(wantedWeights.DEF_PERCENT||0,1); wantedWeights.DEF_FLAT=Math.max(wantedWeights.DEF_FLAT||0,0.25);}
     if(targetAnomalyProficiency>0)wantedWeights.ANOMALY_PROFICIENCY=Math.max(wantedWeights.ANOMALY_PROFICIENCY||0,1);
     const slotAllowedMainStats=collectSlotAllowedMainStats();
     const engine=currentWEngine();
@@ -1191,7 +1472,7 @@ async function runOptimize(){
       baseHP:character.hp||0,baseATK:character.atk||0,baseDEF:character.def||0,baseAnomalyMastery:character.baseAnomalyMastery||0,baseEnergyRegen:character.baseEnergyRegen||0,hpToSheerRatio:role==='RUPTURE'?(character.hpToSheerRatio||0.1):0,
       roleSystem:role,characterName:character.fullName||character.name,characterElement:character.element||'',
       extraCritRate:0,extraCritDmg:0,extraStats,combatExtraStats,
-      targetCritRate,targetCritDmg,targetAnomalyProficiency,targetFinalHp,targetFinalAttack,
+      targetCritRate,targetCritDmg,targetAnomalyProficiency,targetFinalHp,targetFinalDefense,targetFinalAttack,
       mode,wantedWeights,
       minPanelCritDmg:0,
       minFinalAttack:0,
@@ -1214,7 +1495,7 @@ async function runOptimize(){
 }
 function setSummaryHtml(summary){return Object.entries(summary||{}).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'zh-CN')).map(([name,count])=>`<span class="pill">${escapeHtml(name)} × ${count}</span>`).join('')||'<span class="muted">-</span>';}
 function resultStatsHtml(res){
-  const important=['CRIT_RATE','CRIT_DMG','ATK_PERCENT','HP_PERCENT','ANOMALY_PROFICIENCY','ATK_FLAT','HP_FLAT','PEN_RATIO','PEN_FLAT','DEF_PERCENT','DEF_FLAT','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','ELEMENT_DMG','SHEER_DMG_BONUS','INITIAL_ENERGY_REGEN','ANOMALY_MASTERY_FLAT','FINAL_ANOMALY_MASTERY','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE'];
+  const important=['CRIT_RATE','CRIT_DMG','ATK_PERCENT','HP_PERCENT','ANOMALY_PROFICIENCY','ATK_FLAT','HP_FLAT','PEN_RATIO','PEN_FLAT','DEF_PERCENT','DEF_FLAT','BASE_DEF','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','LUMIFLUX_DMG','ELEMENT_DMG','ANOMALY_DMG_BONUS','SQUAD_DMG_BONUS','SHEER_DMG_BONUS','INITIAL_ENERGY_REGEN','ANOMALY_MASTERY_FLAT','FINAL_ANOMALY_MASTERY','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE'];
   const parts=[];
   for(const stat of important){
     const panel=res.stats?.[stat]||0;
@@ -1224,10 +1505,15 @@ function resultStatsHtml(res){
   }
   return parts.join('')||'<span class="muted">-</span>';
 }
+function displayedEffectiveWords(res){
+  const v=Number(res.gameEffectiveWords ?? res.weightedWords ?? res.effectiveWords ?? 0);
+  return Number.isFinite(v)?v:0;
+}
 function resultMetricsHtml(res){
   const finalAtk=res.finalAttack??res.finalATK??0;
   const combatAtk=res.combatFinalAttack??finalAtk;
   const finalHp=res.finalHp??res.finalHP??0;
+  const finalDef=res.finalDefense??res.finalDEF??0;
   const panelCR=res.panelCritRate??res.critRate??0;
   const panelCD=res.panelCritDmg??res.critDmg??0;
   const combatCR=res.critRate??panelCR;
@@ -1240,15 +1526,18 @@ function resultMetricsHtml(res){
     const st=res.combatStats||res.stats||{};
     const ap=st.ANOMALY_PROFICIENCY||0, atkPercent=st.ATK_PERCENT||0;
     const velinaPills=res.initialEnergyRegen?`<span class="pill good">初始回能 ${fmtNum(res.initialEnergyRegen,2)}</span><span class="pill good">实战异常掌控 ${fmtNum(res.finalAnomalyMastery||0,1)}</span><span class="pill good">核心增伤 ${fmtNum(st.VELINA_CORE_DMG_BONUS||0,1)}%</span>`:'';
-    return `<span class="pill good">异常精通 ${fmtNum(ap,2)}</span><span class="pill good">攻击力% ${fmtNum(atkPercent,2)}%</span>${velinaPills}${combatAtkPill}<span class="pill warn">异常有效词条 ${fmtNum(res.weightedWords,2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
+    return `<span class="pill good">异常精通 ${fmtNum(ap,2)}</span><span class="pill good">攻击力% ${fmtNum(atkPercent,2)}%</span>${velinaPills}${combatAtkPill}<span class="pill warn">有效词条 ${fmtNum(displayedEffectiveWords(res),2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
   }
   if(lastOptimizeRole==='RUPTURE'){
-    return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill good">面板暴伤 ${fmtNum(panelCD,2)}%</span>${combatCritPill}<span class="pill warn">贯穿力 ${fmtNum(res.sheerForce,0)}</span><span class="pill">生命 ${fmtNum(finalHp,0)}</span><span class="pill">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">总词条 ${fmtNum(res.weightedWords,2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
+    return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill good">面板暴伤 ${fmtNum(panelCD,2)}%</span>${combatCritPill}<span class="pill warn">贯穿力 ${fmtNum(res.sheerForce,0)}</span><span class="pill">生命 ${fmtNum(finalHp,0)}</span><span class="pill">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">有效词条 ${fmtNum(displayedEffectiveWords(res),2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
+  }
+  if(lastOptimizeRole==='DEFENSE'){
+    return `<span class="pill good">防御 ${fmtNum(finalDef,0)}</span><span class="pill warn">生命 ${fmtNum(finalHp,0)}</span><span class="pill warn">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill">有效词条 ${fmtNum(displayedEffectiveWords(res),2)}</span><span class="pill">评分 ${fmtNum(res.score,0)}</span>`;
   }
   if(lastOptimizeRole==='STUN'||lastOptimizeRole==='SUPPORT'){
-    return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill warn">生命 ${fmtNum(finalHp,0)}</span><span class="pill warn">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">面板暴伤 ${fmtNum(panelCD,2)}%</span><span class="pill">总词条 ${fmtNum(res.weightedWords,2)}</span><span class="pill">评分 ${fmtNum(res.score,0)}</span>`;
+    return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill warn">生命 ${fmtNum(finalHp,0)}</span><span class="pill warn">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">面板暴伤 ${fmtNum(panelCD,2)}%</span><span class="pill">有效词条 ${fmtNum(displayedEffectiveWords(res),2)}</span><span class="pill">评分 ${fmtNum(res.score,0)}</span>`;
   }
-  return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill good">面板暴伤 ${fmtNum(panelCD,2)}%</span>${combatCritPill}<span class="pill warn">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">总词条 ${fmtNum(res.weightedWords,2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
+  return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill good">面板暴伤 ${fmtNum(panelCD,2)}%</span>${combatCritPill}<span class="pill warn">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">有效词条 ${fmtNum(displayedEffectiveWords(res),2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
 }
 function discBoxHtml(d){
   const main=mainStatOf(d), subs=subStatsOf(d).map(s=>formatStatValue(s)).join(' / ')||'无';
@@ -1260,12 +1549,13 @@ function discBoxHtml(d){
 }
 function floorSummary(){
   const parts=[];
-  const cr=num('targetCritRate',0), cd=num('targetCritDmg',0), atk=num('targetFinalAttack',0), hp=num('targetFinalHP',0), ap=num('targetAnomalyProficiency',0);
+  const cr=num('targetCritRate',0), cd=num('targetCritDmg',0), atk=num('targetFinalAttack',0), hp=num('targetFinalHP',0), def=num('targetFinalDefense',0), ap=num('targetAnomalyProficiency',0);
   const strict=$('#mode')?.value==='STRICT_TARGETS';
   parts.push(`暴击率 ${cr>0?fmtNum(cr,1)+'%'+(strict?'（严格贴近）':'（±1词条）'):'不限制'}`);
   parts.push(`暴击伤害 ${cd>0?fmtNum(cd,1)+'%'+(strict?'（严格贴近）':''):'不限制'}`);
   parts.push(`攻击力 ${atk>0?fmtNum(atk,0)+(strict?'（严格贴近）':''):'不限制'}`);
   parts.push(`生命值 ${hp>0?fmtNum(hp,0)+(strict?'（严格贴近）':''):'不限制'}`);
+  parts.push(`防御力 ${def>0?fmtNum(def,0)+(strict?'（严格贴近）':''):'不限制'}`);
   parts.push(`异常精通 ${ap>0?fmtNum(ap,0)+(strict?'（严格贴近）':'（允许低10）'):'不限制'}`);
   return '属性设定：'+parts.join('；')+(strict?'；当前策略：遵守严格指标。':'');
 }
@@ -1278,7 +1568,7 @@ function renderResults(resp){
   const occupyPlan=occupiedPolicySummary();
   const charPlan=`代理人：${characterLabel(currentCharacter())}`;
   const wEnginePlan=`音擎：${selectedWEngineSummary()}`;
-  $('#resultsSummary').innerHTML=`<strong>${escapeHtml(resp.message||'完成')}</strong><br>${escapeHtml(setPlan)}<br>${escapeHtml(mainLockPlan)}<br>${escapeHtml(floorPlan)}<br>${escapeHtml(occupyPlan)}<br>${escapeHtml(charPlan)}<br>${escapeHtml(wEnginePlan)}<br>候选数：${escapeHtml(countText)}；实际搜索组合：${escapeHtml(resp.searchedCombinations||0)}。<br>v1.15 计算口径：角色60级成长、所选核心技/面板状态、音擎基础与高级属性、驱动盘主副属性和2件套静态效果计入角色详情面板；4件套和音擎技能类效果统一作为实战参考。敌人抗性无视、队伍条件、专属技能倍率不直接写入通用期望指数。`;
+  $('#resultsSummary').innerHTML=`<strong>${escapeHtml(resp.message||'完成')}</strong><br>${escapeHtml(setPlan)}<br>${escapeHtml(mainLockPlan)}<br>${escapeHtml(floorPlan)}<br>${escapeHtml(occupyPlan)}<br>${escapeHtml(charPlan)}<br>${escapeHtml(wEnginePlan)}<br>候选数：${escapeHtml(countText)}；实际搜索组合：${escapeHtml(resp.searchedCombinations||0)}。<br>__APP_RELEASE__ 计算口径：角色60级成长、所选核心技/面板状态、音擎基础与高级属性、驱动盘主副属性和2件套静态效果计入角色详情面板；4件套和音擎技能类效果统一作为实战参考。敌人抗性无视、队伍条件、专属技能倍率不直接写入通用期望指数。`;
   if(!resp.results||!resp.results.length){
     const misses=resp.nearMisses||[];
     let html='<div class="notice">没有达标结果。请检查所选 4 件套 / 2 件套在每个槽位是否有库存，或 4/5/6 号位主属性限制、期望属性是否过严；也可以把暂不需要的期望属性改回 0。普通策略下暴击率使用 ±1 个词条窗口；异常精通允许低 10 点；严格指标策略会显示最接近目标的方案。</div>';
@@ -1385,7 +1675,11 @@ async function storeResultBuild(index){
 }
 function updateCounts(){$('#discCountPill').textContent=`${state.discs.length} 个驱动盘`;}
 function renderAll(){refreshSetControls(); refreshAgentFilterControls(); renderInventory(); updateCounts();}
-function exportState(){const blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`zzz-drive-builder-state-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);}
+function downloadJSON(data,filename){const blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=filename; a.click(); URL.revokeObjectURL(a.href);}
+const SCANNER_AVAILABLE=__SCANNER_AVAILABLE__;
+async function startBundledScanner(){const btn=$('#startScannerBtn'); if(!btn||!SCANNER_AVAILABLE)return; const previous=btn.textContent; btn.disabled=true; btn.textContent='正在启动...'; try{const result=await fetchJSON('/api/scanner/start',{method:'POST'}); if(result.alreadyRunning){toast('扫描器已经在运行：请在扫描器窗口点击“检测窗口”→“开始扫描”'); return;} toast(`扫描器 ${result.scannerVersion||''} 已打开：请点击“检测窗口”→“开始扫描”`);}catch(err){alert('无法启动扫描器：'+err.message);}finally{btn.disabled=false; btn.textContent=previous;}}
+function exportState(){downloadJSON(state,`zzz-drive-builder-backup-${new Date().toISOString().slice(0,10)}.json`);}
+function exportInterop(){try{const data=ZZZDriveInterop.createExport(state.discs,{sourceAccountLabel:'ZZZ Drive Optimizer'}); downloadJSON(data,`zzz-calculator-drive-discs-${new Date().toISOString().slice(0,10)}.json`); toast(`已导出 ${data.driveDiscs.length} 个通用驱动盘`);}catch(err){alert('无法导出通用驱动盘文件：'+err.message);}}
 function exportResults(){if(!lastResults){alert('还没有可导出的结果。'); return;} const blob=new Blob([JSON.stringify(lastResults,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`zzz-drive-builder-results-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(a.href);}
 async function cancelOptimize(){const btn=$('#cancelOptimizeBtn'); btn.disabled=true; btn.textContent='正在终止...'; try{const resp=await fetchJSON('/api/optimize/cancel',{method:'POST'}); const msg=resp?.message||'已发送强制终止指令。'; $('#resultsSummary').textContent=msg; toast(msg);}catch(err){$('#resultsSummary').textContent='终止失败：'+err.message; toast('终止失败：'+err.message);}finally{btn.textContent='强制终止';}}
 function resetOptimizerOptions(){
@@ -1406,6 +1700,7 @@ function resetOptimizerOptions(){
   $('#targetCritDmg').value='0';
   $('#targetFinalAttack').value='0';
   $('#targetFinalHP').value='0';
+  $('#targetFinalDefense').value='0';
   $('#targetAnomalyProficiency').value='0';
   const occupiedPolicy=$('#occupiedPolicy'); if(occupiedPolicy)occupiedPolicy.value='ALL';
   refreshFloorControls();
@@ -1427,113 +1722,34 @@ async function clearResults(){
   $('#resultsContainer').innerHTML='';
   toast('配装结果和配装选项已清空');
 }
-let externalScannerPollTimer=null;
-let externalScannerHandledJob='';
-function setExternalScannerButton(running=false){
-  const button=$('#launchExternalScannerBtn');
-  if(!button)return;
-  button.disabled=running;
-  button.textContent=running?'正在扫描...':'启动扫描器';
-}
-function renderExternalScannerStatus(status){
-  const box=$('#externalScannerStatus');
-  if(!box)return;
-  const p=status?.preview;
-  const pills=p?`<div><span class="pill good">共 ${p.total} 个</span><span class="pill good">新增 ${p.added}</span><span class="pill warn">移除 ${p.removed}</span><span class="pill">匹配 ${p.unchanged}</span></div>`:'';
-  const warnings=(p?.warnings||[]).map(item=>`<div class="fine" style="margin-top:6px">${escapeHtml(item)}</div>`).join('');
-  box.innerHTML=`${pills}<div${pills?' class="fine" style="margin-top:8px"':''}>${escapeHtml(status?.message||'')}</div>${warnings}`;
-}
-async function startExternalScanner(){
-  if(!confirm('请确认游戏已经打开，并停留在背包的驱动盘页面。扫描期间请保持游戏可见且不要操作鼠标。现在启动扫描器吗？'))return;
-  if(externalScannerPollTimer){clearTimeout(externalScannerPollTimer); externalScannerPollTimer=null;}
-  externalScannerHandledJob='';
-  setExternalScannerButton(true);
-  $('#externalScannerStatus').textContent='正在启动外部扫描器...';
-  try{
-    const status=await fetchJSON('/api/scan/external/start',{method:'POST'});
-    renderExternalScannerStatus(status);
-    scheduleExternalScannerPoll(500);
-  }catch(err){
-    setExternalScannerButton(false);
-    $('#externalScannerStatus').innerHTML=`<span class="pill bad">无法启动</span><div class="fine" style="margin-top:8px">${escapeHtml(err.message)}</div><div class="fine" style="margin-top:6px"><a href="https://github.com/ZztIsolation/ZZZ-Scanner.Next/releases/tag/scanner-1.0.45" target="_blank" rel="noreferrer">打开扫描器 1.0.45 下载页</a></div>`;
+async function importStateFile(file){
+  const text=await file.text(); let data;
+  try{data=JSON.parse(text);}catch{alert('JSON 文件无法解析'); return;}
+  let parsed;
+  try{parsed=ZZZDriveInterop.parseImport(data,{sourcePath:file.name});}catch(err){alert('无法识别或校验该驱动盘文件：'+err.message+'\n\n当前库存没有发生变化。'); return;}
+  if(parsed.kind==='backup'||parsed.kind==='backup-array'){
+    const incoming=parsed.kind==='backup'?{version:parsed.state.version||1,discs:parsed.state.discs||[],setEffects:parsed.state.setEffects||[],characterBuilds:parsed.state.characterBuilds||[],discClaims:parsed.state.discClaims||[],claimsInitialized:!!parsed.state.claimsInitialized}:{version:109,discs:parsed.discs||[],setEffects:[],characterBuilds:[],discClaims:[],claimsInitialized:true};
+    if(!confirm(`检测到“${parsed.label}”，其中有 ${incoming.discs.length} 个驱动盘。\n\n完整备份会替换当前库存、配装方案和本地归属。继续吗？`))return;
+    state=incoming; normalizeCharacterBuilds(); await saveState(); renderAll(); toast('完整备份导入完成'); return;
   }
+  let merged;
+  try{merged=ZZZDriveInterop.mergeDiscs(state.discs,parsed);}catch(err){alert('生成导入计划失败：'+err.message+'\n\n当前库存没有发生变化。'); return;}
+  const s=merged.summary;
+  const warningText=(parsed.warnings||[]).length?`\n\n提示：${parsed.warnings.slice(0,5).join('；')}${parsed.warnings.length>5?'……':''}`:'';
+  if(!confirm(`检测到“${parsed.label}”，共 ${parsed.discs.length} 个驱动盘。\n\n将与当前库存合并：新增 ${s.added}、更新 ${s.updated}、已有 ${s.skipped}、文件内重复 ${s.duplicateInImport}。\n不会删除当前库存、配装方案或本地归属。${warningText}\n\n继续吗？`))return;
+  state.discs=merged.discs;
+  await saveState(); renderAll(); refreshSetControls();
+  toast(`导入完成：新增 ${s.added}，更新 ${s.updated}，已有 ${s.skipped}`);
 }
-function scheduleExternalScannerPoll(delay=1000){
-  if(externalScannerPollTimer)clearTimeout(externalScannerPollTimer);
-  externalScannerPollTimer=setTimeout(()=>pollExternalScannerStatus(),delay);
-}
-async function pollExternalScannerStatus(){
-  externalScannerPollTimer=null;
-  try{
-    const status=await fetchJSON('/api/scan/external/status');
-    renderExternalScannerStatus(status);
-    if(status.status==='running'){
-      setExternalScannerButton(true);
-      scheduleExternalScannerPoll(1000);
-      return;
-    }
-    setExternalScannerButton(false);
-    if(status.status==='ready'&&status.preview&&externalScannerHandledJob!==status.jobId){
-      externalScannerHandledJob=status.jobId;
-      const p=status.preview;
-      const confirmed=confirm(`扫描完成，共识别 ${p.total} 个驱动盘。\n新增 ${p.added} 个，移除 ${p.removed} 个，匹配并保留人工信息 ${p.unchanged} 个。\n\n只会替换此前由 ZZZ Scanner Next 导入的记录；手工录入和协议扫描记录不受影响。确认写入库存吗？`);
-      if(!confirmed){
-        $('#externalScannerStatus').insertAdjacentHTML('beforeend','<div class="fine" style="margin-top:8px">已取消写入；扫描结果没有修改库存。</div>');
-        return;
-      }
-      setExternalScannerButton(true);
-      $('#launchExternalScannerBtn').textContent='正在写入...';
-      try{
-        await fetchJSON('/api/scan/external/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({jobId:status.jobId,previewHash:p.previewHash})});
-        await loadState(); renderAll();
-        renderExternalScannerStatus({message:`导入完成：库存已写入 ${p.total} 个视觉扫描驱动盘。`,status:'completed'});
-        toast(`扫描导入完成：新增 ${p.added}，移除 ${p.removed}`);
-      }catch(err){
-        $('#externalScannerStatus').innerHTML=`<span class="pill bad">写入失败</span><div class="fine" style="margin-top:8px">${escapeHtml(err.message)}</div>`;
-      }finally{setExternalScannerButton(false);}
-      return;
-    }
-    if(status.status==='failed'||status.status==='missing')toast(status.message||'扫描器运行失败');
-  }catch(err){
-    setExternalScannerButton(false);
-    $('#externalScannerStatus').textContent='读取扫描状态失败：'+err.message;
-  }
-}
-function resetScanImport(message='尚未选择扫描结果。'){
-  pendingScanExport=null; pendingScanPreview=null;
-  const button=$('#applyScanImportBtn'); button.disabled=true;
-  $('#scanImportPreview').textContent=message;
-}
-function renderScanImportPreview(preview){
-  const details=(preview.changes||[]).filter(x=>x.action!=='unchanged').slice(0,20).map(x=>`<span class="pill ${x.action==='add'?'good':'warn'}">${x.action==='add'?'新增':'更新'} ${escapeHtml(x.setName)} ${x.slot}号位</span>`).join('');
-  const more=(preview.added+preview.updated)>20?`<div class="fine" style="margin-top:8px">另有 ${preview.added+preview.updated-20} 项变更未展开。</div>`:'';
-  $('#scanImportPreview').innerHTML=`<div><span class="pill good">共 ${preview.total} 个</span><span class="pill good">新增 ${preview.added}</span><span class="pill warn">更新 ${preview.updated}</span><span class="pill">不变 ${preview.unchanged}</span></div><div class="fine" style="margin:8px 0">${escapeHtml(preview.region)} / ${escapeHtml(preview.clientVersion)} / ${escapeHtml(preview.adapterId)}</div>${details?`<div>${details}</div>`:''}${more}`;
-}
-async function previewScanResultFile(file){
-  resetScanImport('正在校验扫描结果...');
-  let data;
-  try{data=JSON.parse(await file.text());}catch{resetScanImport('扫描结果不是有效 JSON。'); return;}
-  try{
-    const preview=await fetchJSON('/api/scan/import/preview',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-    pendingScanExport=data; pendingScanPreview=preview; renderScanImportPreview(preview);
-    $('#applyScanImportBtn').disabled=false;
-    toast(`扫描预览完成：新增 ${preview.added}，更新 ${preview.updated}`);
-  }catch(err){resetScanImport('扫描结果被拒绝：'+err.message);}
-}
-async function applyScanImport(){
-  if(!pendingScanExport||!pendingScanPreview)return;
-  const p=pendingScanPreview;
-  if(!confirm(`将新增 ${p.added} 个、更新 ${p.updated} 个驱动盘；${p.unchanged} 个保持不变。确认写入吗？`))return;
-  const button=$('#applyScanImportBtn'); button.disabled=true; button.textContent='正在写入...';
-  try{
-    await fetchJSON('/api/scan/import/apply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({export:pendingScanExport,previewHash:p.previewHash})});
-    await loadState(); renderAll(); resetScanImport('导入完成。可以选择新的扫描结果。');
-    toast(`扫描导入完成：新增 ${p.added}，更新 ${p.updated}`);
-  }catch(err){button.disabled=false; $('#scanImportPreview').textContent='写入失败：'+err.message;}
-  finally{button.textContent='确认写入库存';}
-}
-async function importStateFile(file){const text=await file.text(); let data; try{data=JSON.parse(text);}catch{alert('JSON 文件无法解析'); return;} const incoming=Array.isArray(data)?{version:109,discs:data,setEffects:[],characterBuilds:[],discClaims:[],claimsInitialized:true}:{version:data.version||1,discs:data.discs||[],setEffects:data.setEffects||[],characterBuilds:data.characterBuilds||[],discClaims:data.discClaims||[],claimsInitialized:!!data.claimsInitialized}; if(!confirm(`将导入 ${incoming.discs.length} 个驱动盘，并替换当前库存。继续吗？`))return; state=incoming; normalizeCharacterBuilds(); await saveState(); renderAll(); toast('导入完成');}
 async function addSampleData(){if(!confirm('添加一组示例数据用于测试？不会删除现有库存。'))return; const now=new Date().toISOString(); const make=(setName,slot,mainType,mainValue,subPairs)=>{const mainStat={type:mainType,value:mainValue}, subStats=subPairs.map(([type,value])=>({type,value})); return {id:newId(),setName,slot,rarity:'S',level:15,stats:[mainStat,...subStats],mainStat,subStats,locked:false,discarded:false,equippedBy:'',note:'',createdAt:now,updatedAt:now};}; const samples=[make('啄木鸟电音',1,'HP_FLAT',2200,[['CRIT_RATE',4.8],['CRIT_DMG',9.6],['ATK_PERCENT',3],['ANOMALY_PROFICIENCY',9]]),make('啄木鸟电音',2,'ATK_FLAT',316,[['CRIT_RATE',7.2],['CRIT_DMG',4.8],['ATK_PERCENT',6],['HP_PERCENT',3]]),make('啄木鸟电音',3,'DEF_FLAT',184,[['CRIT_DMG',19.2],['ATK_PERCENT',3],['PEN_FLAT',18],['ANOMALY_PROFICIENCY',9]]),make('啄木鸟电音',4,'CRIT_RATE',24,[['CRIT_DMG',9.6],['ATK_PERCENT',6],['PEN_FLAT',9],['ANOMALY_PROFICIENCY',9]]),make('激素朋克',4,'CRIT_DMG',48,[['CRIT_RATE',9.6],['ATK_PERCENT',3],['HP_PERCENT',3],['ANOMALY_PROFICIENCY',9]]),make('自由蓝调',4,'ANOMALY_PROFICIENCY',92,[['ATK_PERCENT',6],['CRIT_RATE',2.4],['CRIT_DMG',4.8],['PEN_FLAT',9]]),make('极地重金属',5,'ICE_DMG',30,[['CRIT_RATE',4.8],['CRIT_DMG',14.4],['ATK_PERCENT',3],['ANOMALY_PROFICIENCY',9]]),make('激素朋克',5,'ATK_PERCENT',30,[['CRIT_RATE',7.2],['CRIT_DMG',9.6],['HP_PERCENT',3],['ANOMALY_PROFICIENCY',18]]),make('自由蓝调',5,'PEN_RATIO',24,[['ATK_PERCENT',6],['ANOMALY_PROFICIENCY',18],['CRIT_RATE',2.4],['CRIT_DMG',4.8]]),make('激素朋克',6,'ATK_PERCENT',30,[['CRIT_RATE',7.2],['CRIT_DMG',9.6],['ATK_FLAT',19],['ANOMALY_PROFICIENCY',9]]),make('自由蓝调',6,'ANOMALY_MASTERY',30,[['ATK_PERCENT',6],['ANOMALY_PROFICIENCY',27],['CRIT_RATE',2.4],['PEN_FLAT',9]]),make('震星迪斯科',6,'IMPACT',18,[['CRIT_RATE',4.8],['CRIT_DMG',14.4],['ATK_PERCENT',6],['HP_PERCENT',3]])]; state.discs.push(...samples); await saveState(); renderAll(); toast('示例数据已添加');}
+function handleInventoryAction(button){
+  if(!button)return;
+  const id=button.dataset.id;
+  if(button.dataset.action==='edit')editDisc(id);
+  if(button.dataset.action==='copy')duplicateDisc(id);
+  if(button.dataset.action==='delete')deleteDisc(id);
+  if(button.dataset.action==='removeOwner')removeDiscOwner(id);
+}
 function setupEvents(){
   setupOcrEvents();
   $('#discForm').addEventListener('input',ev=>{ev.target?.classList?.remove('ocrDoubt');});
@@ -1544,7 +1760,7 @@ function setupEvents(){
   $('#mainStatValue').addEventListener('change',()=>validateMainStatFormValue({correct:true}));
   $('#mainStatValue').addEventListener('blur',()=>validateMainStatFormValue({correct:true,silent:true}));
   $('#roleSystem').addEventListener('change',()=>{modeTouchedByUser=false; refreshModeOptions();});
-  for(const id of ['targetCritRate','targetCritDmg','targetFinalAttack','targetFinalHP','targetAnomalyProficiency']){const el=$('#'+id); if(el){el.addEventListener('input',maybeAutoStrictMode); el.addEventListener('change',maybeAutoStrictMode);}}
+  for(const id of ['targetCritRate','targetCritDmg','targetFinalAttack','targetFinalHP','targetFinalDefense','targetAnomalyProficiency']){const el=$('#'+id); if(el){el.addEventListener('input',maybeAutoStrictMode); el.addEventListener('change',maybeAutoStrictMode);}}
   $('#characterSelect').addEventListener('change',onCharacterChanged);
   $('#coreLevelSelect').addEventListener('change',()=>{updateCharacterInfo(); updateWEngineInfo();});
   $('#wEngineSelect').addEventListener('change',updateWEngineInfo);
@@ -1555,24 +1771,28 @@ function setupEvents(){
   $('#discForm').addEventListener('submit',saveDiscFromForm);
   $('#resetFormBtn').addEventListener('click',()=>resetDiscForm(selectedSetName()));
   $('#sampleDataBtn').addEventListener('click',addSampleData);
+  if($('#startScannerBtn'))$('#startScannerBtn').addEventListener('click',startBundledScanner);
   $('#exportStateBtn').addEventListener('click',exportState);
+  $('#exportInteropBtn').addEventListener('click',exportInterop);
   $('#changeStorageBtn').addEventListener('click',changeStoragePath);
   $('#resetStorageBtn').addEventListener('click',resetStoragePath);
   $('#exportResultsBtn').addEventListener('click',exportResults);
   $('#clearResultsBtn').addEventListener('click',clearResults);
   $('#importStateFile').addEventListener('change',ev=>{if(ev.target.files[0])importStateFile(ev.target.files[0]); ev.target.value='';});
-  $('#launchExternalScannerBtn').addEventListener('click',startExternalScanner);
-  $('#scanResultFile').addEventListener('change',ev=>{if(ev.target.files[0])previewScanResultFile(ev.target.files[0]); ev.target.value='';});
-  $('#applyScanImportBtn').addEventListener('click',applyScanImport);
   $('#runOptimizeBtn').addEventListener('click',runOptimize);
   $('#cancelOptimizeBtn').addEventListener('click',cancelOptimize);
   $('#shutdownBtn').addEventListener('click',async()=>{if(!confirm('确定退出程序吗？'))return; try{await fetchJSON('/api/shutdown',{method:'POST'});}catch{} document.body.innerHTML='<main><section class="card"><h2>程序已退出</h2><p>可以关闭这个浏览器页面了。</p></section></main>';});
   $('#clearInventoryFiltersBtn').addEventListener('click',clearInventoryFilters);
+  $('#inventoryCardsViewBtn').addEventListener('click',()=>setInventoryViewMode('cards'));
+  $('#inventoryTableViewBtn').addEventListener('click',()=>setInventoryViewMode('table'));
   for(const id of ['filterText','filterSlot','filterSet','filterStat','filterAgent']){$('#'+id).addEventListener('input',renderInventory); $('#'+id).addEventListener('change',renderInventory);}
   $('#resultsContainer').addEventListener('click',ev=>{const claimBtn=ev.target.closest('button[data-claim-disc]'); if(claimBtn){claimDiscForCurrentAgent(claimBtn.dataset.claimDisc); return;} const btn=ev.target.closest('button[data-store-build]'); if(!btn)return; storeResultBuild(Number(btn.dataset.storeBuild));});
-  $('#inventoryBody').addEventListener('click',ev=>{const btn=ev.target.closest('button[data-action]'); if(!btn)return; const id=btn.dataset.id; if(btn.dataset.action==='edit')editDisc(id); if(btn.dataset.action==='copy')duplicateDisc(id); if(btn.dataset.action==='delete')deleteDisc(id); if(btn.dataset.action==='removeOwner')removeDiscOwner(id);});
+  $('#inventoryCardGrid').addEventListener('click',ev=>{const card=ev.target.closest('[data-disc-id]'); if(!card)return; selectedInventoryDiscId=card.dataset.discId||''; renderInventory();});
+  $('#inventoryCardGrid').addEventListener('keydown',ev=>{if(ev.key!=='Enter'&&ev.key!==' ')return; const card=ev.target.closest('[data-disc-id]'); if(!card)return; ev.preventDefault(); selectedInventoryDiscId=card.dataset.discId||''; renderInventory();});
+  $('#inventoryBody').addEventListener('click',ev=>handleInventoryAction(ev.target.closest('button[data-action]')));
+  $('#inventoryDetailDrawer').addEventListener('click',ev=>handleInventoryAction(ev.target.closest('button[data-action]')));
 }
-(async function init(){try{fillStaticControls(); setupEvents(); await loadState(); renderAll(); await pollExternalScannerStatus();}catch(err){$('#statusText').textContent='加载失败：'+err.message; console.error(err);}})();
+(async function init(){try{fillStaticControls(); setupEvents(); await loadState(); renderAll();}catch(err){$('#statusText').textContent='加载失败：'+err.message; console.error(err);}})();
 </script>
 </body>
 </html>
