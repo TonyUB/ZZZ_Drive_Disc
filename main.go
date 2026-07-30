@@ -39,7 +39,7 @@ const appVersion = 121
 // releaseEdition is set to A or B at build time with -ldflags "-X main.releaseEdition=A".
 // appVersion remains the persisted-state schema version so both editions can open
 // the same inventory without migrations.
-const releaseSeries = "1.02"
+const releaseSeries = "1.03"
 
 var releaseEdition = "B"
 
