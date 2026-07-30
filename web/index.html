@@ -1523,10 +1523,9 @@ function resultMetricsHtml(res){
   const combatCritPill=(Math.abs(combatCR-panelCR)>0.05||Math.abs(combatCD-panelCD)>0.05)?`<span class="pill good">实战参考 ${fmtNum(combatCR,2)}% / ${fmtNum(combatCD,2)}%</span>`:'';
   const combatAtkPill=Math.abs(combatAtk-finalAtk)>0.5?`<span class="pill good">实战攻击 ${fmtNum(combatAtk,0)}</span>`:'';
   if(isAnomalyMode(lastOptimizeMode)){
-    const st=res.combatStats||res.stats||{};
-    const ap=st.ANOMALY_PROFICIENCY||0, atkPercent=st.ATK_PERCENT||0;
-    const velinaPills=res.initialEnergyRegen?`<span class="pill good">初始回能 ${fmtNum(res.initialEnergyRegen,2)}</span><span class="pill good">实战异常掌控 ${fmtNum(res.finalAnomalyMastery||0,1)}</span><span class="pill good">核心增伤 ${fmtNum(st.VELINA_CORE_DMG_BONUS||0,1)}%</span>`:'';
-    return `<span class="pill good">异常精通 ${fmtNum(ap,2)}</span><span class="pill good">攻击力% ${fmtNum(atkPercent,2)}%</span>${velinaPills}${combatAtkPill}<span class="pill warn">有效词条 ${fmtNum(displayedEffectiveWords(res),2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
+    const panelStats=res.stats||{};
+    const panelAP=panelStats.ANOMALY_PROFICIENCY||0;
+    return `<span class="pill good">面板异常精通 ${fmtNum(panelAP,2)}</span><span class="pill good">面板攻击 ${fmtNum(finalAtk,0)}</span><span class="pill warn">有效词条 ${fmtNum(displayedEffectiveWords(res),2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
   }
   if(lastOptimizeRole==='RUPTURE'){
     return `<span class="pill good">面板暴击率 ${fmtNum(panelCR,2)}%</span>${critFitPill}<span class="pill good">面板暴伤 ${fmtNum(panelCD,2)}%</span>${combatCritPill}<span class="pill warn">贯穿力 ${fmtNum(res.sheerForce,0)}</span><span class="pill">生命 ${fmtNum(finalHp,0)}</span><span class="pill">总攻击 ${fmtNum(finalAtk,0)}</span>${combatAtkPill}<span class="pill">有效词条 ${fmtNum(displayedEffectiveWords(res),2)}</span><span class="pill">期望指数 ${fmtNum(res.damageIndex??res.score,0)}</span>`;
