@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -96,14 +97,14 @@ func TestDualReleaseRendering(t *testing.T) {
 	}
 	versionA := renderIndexPage(index, "A")
 	versionB := renderIndexPage(index, "B")
-	if !bytes.Contains(versionA, []byte("v1.0A")) || !bytes.Contains(versionB, []byte("v1.0B")) {
+	if !bytes.Contains(versionA, []byte("v1.01A")) || !bytes.Contains(versionB, []byte("v1.01B")) {
 		t.Fatal("release label was not rendered for both editions")
 	}
 	if bytes.Contains(versionA, []byte(`id="startScannerBtn"`)) || bytes.Contains(versionA, []byte(`>打开驱动盘扫描器</button>`)) {
-		t.Fatal("V1.0A must not render the scanner button")
+		t.Fatal("V1.01A must not render the scanner button")
 	}
 	if !bytes.Contains(versionA, []byte("const SCANNER_AVAILABLE=false")) {
-		t.Fatal("V1.0A must disable scanner JavaScript")
+		t.Fatal("V1.01A must disable scanner JavaScript")
 	}
 	if !scannerIncludedForEdition("B") || scannerIncludedForEdition("A") {
 		t.Fatal("scanner edition selection is incorrect")
@@ -129,6 +130,99 @@ func TestDualReleaseRendering(t *testing.T) {
 	}
 }
 
+func anomalyPanelDiscs() []Disc {
+	return []Disc{
+		testDisc("谶羽之誓", 1, sv("HP_FLAT", 2200)),
+		testDisc("谶羽之誓", 2, sv("ATK_FLAT", 316)),
+		testDisc("谶羽之誓", 3, sv("DEF_FLAT", 184)),
+		testDisc("谶羽之誓", 4, sv("ANOMALY_PROFICIENCY", 92)),
+		testDisc("自由蓝调", 5, sv("ATK_PERCENT", 30)),
+		testDisc("自由蓝调", 6, sv("ANOMALY_MASTERY", 30)),
+	}
+}
+
+func anomalyPanelRequest() OptimizeRequest {
+	return OptimizeRequest{
+		RoleSystem:       "ANOMALY",
+		Mode:             "ANOMALY_AP",
+		CharacterName:    "蕾米埃尔·丹",
+		CharacterElement: "LUMIFLUX",
+		SetPattern:       "4+2",
+		Required4Set:     "谶羽之誓",
+		Required2Set:     "自由蓝调",
+		BaseATK:          823,
+		BaseCritRate:     5,
+		BaseCritDmg:      50,
+		ExtraStats: map[string]float64{
+			"BASE_ATK":            743,
+			"ATK_PERCENT":         36,
+			"ANOMALY_PROFICIENCY": 224,
+		},
+		CombatExtraStats: map[string]float64{
+			"ANOMALY_PROFICIENCY": 96,
+			"ATK_PERCENT":         20,
+		},
+		WantedWeights: roleEffectiveWeights("ANOMALY", "ANOMALY_AP", nil),
+	}
+}
+
+func TestAnomalyResultUsesAgentPanelValues(t *testing.T) {
+	req := anomalyPanelRequest()
+	res, ok := evaluateBuild(anomalyPanelDiscs(), req, nil)
+	if !ok {
+		t.Fatal("anomaly panel fixture did not evaluate")
+	}
+	if res.Stats["ANOMALY_PROFICIENCY"] != 376 {
+		t.Fatalf("panel AP = %.0f; want 376", res.Stats["ANOMALY_PROFICIENCY"])
+	}
+	if res.CombatStats["ANOMALY_PROFICIENCY"] != 522 {
+		t.Fatalf("combat AP = %.0f; want 522", res.CombatStats["ANOMALY_PROFICIENCY"])
+	}
+	if res.FinalAttack != 2915 || res.CombatFinalAttack != 3228 {
+		t.Fatalf("panel/combat attack = %.0f/%.0f; want 2915/3228", res.FinalAttack, res.CombatFinalAttack)
+	}
+	if !strings.Contains(res.Reason, "面板异常精通 376.0") || !strings.Contains(res.Reason, "面板攻击 2915") {
+		t.Fatalf("anomaly reason does not use panel values: %s", res.Reason)
+	}
+	if strings.Contains(res.Reason, "522.0") || strings.Contains(res.Reason, "攻击力 86.0%") {
+		t.Fatalf("anomaly reason leaked combat/component values: %s", res.Reason)
+	}
+}
+
+func TestAnomalyTargetCannotBeSatisfiedByCombatBonus(t *testing.T) {
+	req := anomalyPanelRequest()
+	req.TargetAnomalyProficiency = 450
+	if _, ok := evaluateBuild(anomalyPanelDiscs(), req, nil); ok {
+		t.Fatal("combat AP must not satisfy a panel-facing AP target")
+	}
+}
+
+func TestAnomalyAttackModeSortsByFinalPanelAttack(t *testing.T) {
+	results := []OptimizeResult{
+		{FinalAttack: 2800, Stats: map[string]float64{"ATK_PERCENT": 90, "ANOMALY_PROFICIENCY": 400}},
+		{FinalAttack: 3000, Stats: map[string]float64{"ATK_PERCENT": 80, "ANOMALY_PROFICIENCY": 400}},
+	}
+	sortResults(results, "ANOMALY_ATK")
+	if results[0].FinalAttack != 3000 {
+		t.Fatalf("ANOMALY_ATK sorted by a component instead of final panel attack: %#v", results)
+	}
+}
+
+func TestAnomalyResultMarkupUsesPanelStats(t *testing.T) {
+	index, err := webFiles.ReadFile("web/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, marker := range []string{"const panelStats=res.stats||{}", "面板异常精通", "面板攻击"} {
+		if !bytes.Contains(index, []byte(marker)) {
+			t.Fatalf("anomaly result panel marker missing: %s", marker)
+		}
+	}
+	if bytes.Contains(index, []byte("const st=res.combatStats||res.stats||{}")) {
+		t.Fatal("anomaly result panel still reads combatStats")
+	}
+}
+
 func TestDualReleaseRoutes(t *testing.T) {
 	versionA, err := newAppMux(false)
 	if err != nil {
@@ -138,7 +232,7 @@ func TestDualReleaseRoutes(t *testing.T) {
 	responseA := httptest.NewRecorder()
 	versionA.ServeHTTP(responseA, requestA)
 	if responseA.Code != http.StatusNotFound {
-		t.Fatalf("V1.0A scanner route status = %d; want 404", responseA.Code)
+		t.Fatalf("V1.01A scanner route status = %d; want 404", responseA.Code)
 	}
 
 	versionB, err := newAppMux(true)
@@ -149,7 +243,7 @@ func TestDualReleaseRoutes(t *testing.T) {
 	responseB := httptest.NewRecorder()
 	versionB.ServeHTTP(responseB, requestB)
 	if responseB.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("V1.0B scanner route status = %d; want 405", responseB.Code)
+		t.Fatalf("V1.01B scanner route status = %d; want 405", responseB.Code)
 	}
 }
 

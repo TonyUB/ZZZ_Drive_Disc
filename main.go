@@ -39,7 +39,7 @@ const appVersion = 121
 // releaseEdition is set to A or B at build time with -ldflags "-X main.releaseEdition=A".
 // appVersion remains the persisted-state schema version so both editions can open
 // the same inventory without migrations.
-const releaseSeries = "1.0"
+const releaseSeries = "1.01"
 
 var releaseEdition = "B"
 
@@ -3428,7 +3428,10 @@ func thresholdDiagnosticText(res OptimizeResult, req OptimizeRequest) string {
 			parts = append(parts, fmt.Sprintf("防御力 %.0f / 期望 %.0f，差 %.0f", res.FinalDefense, req.TargetFinalDefense, math.Max(0, req.TargetFinalDefense-res.FinalDefense)))
 		}
 	}
-	ap := res.CombatStats["ANOMALY_PROFICIENCY"]
+	// User-entered AP goals refer to the value shown on the in-game agent panel.
+	// Triggered W-Engine and 4-piece bonuses live in CombatStats and must not make
+	// a build pass a panel-facing target.
+	ap := res.Stats["ANOMALY_PROFICIENCY"]
 	if req.TargetAnomalyProficiency > 0 && ap+anomalyTargetTolerance+1e-9 < req.TargetAnomalyProficiency {
 		parts = append(parts, fmt.Sprintf("异常精通 %.0f / 期望 %.0f，低于期望超过 %.0f", ap, req.TargetAnomalyProficiency, anomalyTargetTolerance))
 	}
@@ -3811,8 +3814,10 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 	// agent-details panel. W-Engine skill effects and conditional set effects are
 	// kept in critRate / critDmg as combat reference values, but they must not be
 	// used to satisfy the target crit-rate threshold.
-	ap := combatStats["ANOMALY_PROFICIENCY"]
-	atkPercent := combatStats["ATK_PERCENT"]
+	// Panel-facing anomaly modes must use the same values the player sees in the
+	// agent-details screen. CombatStats intentionally keeps triggered bonuses for
+	// the separate output reference, but it is not a substitute for panel stats.
+	panelAP := stats["ANOMALY_PROFICIENCY"]
 	overflow := 0.0
 	utilityPlan := roleIsUtility(req.RoleSystem) || strings.EqualFold(strings.TrimSpace(req.Mode), "UTILITY_BALANCE")
 	strictPlan := isStrictTargetMode(req.Mode)
@@ -3838,7 +3843,7 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 		if targetCritDmg > 0 && panelCritDmg+1e-9 < targetCritDmg {
 			return OptimizeResult{}, false
 		}
-		if req.TargetAnomalyProficiency > 0 && ap+anomalyTargetTolerance+1e-9 < req.TargetAnomalyProficiency {
+		if req.TargetAnomalyProficiency > 0 && panelAP+anomalyTargetTolerance+1e-9 < req.TargetAnomalyProficiency {
 			return OptimizeResult{}, false
 		}
 		if req.TargetFinalHP > 0 {
@@ -3891,7 +3896,7 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 	strictPenalty := 0.0
 	strictParts := []string{}
 	if strictPlan {
-		strictPenalty, strictParts = strictTargetPenalty(stats, panelCritRate, panelCritDmg, finalATK, finalHP, finalDEF, ap, req)
+		strictPenalty, strictParts = strictTargetPenalty(stats, panelCritRate, panelCritDmg, finalATK, finalHP, finalDEF, panelAP, req)
 	}
 	score := scoreDamageIndex*critFitFactor + scoreCritDmg*2 + weightedWords*req.WordCoef
 	switch mode {
@@ -3910,16 +3915,16 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 		// output index, then use raw Sheer Force as a secondary key.
 		score = scoreDamageIndex*critFitFactor*240 + sheerForce*300 + scoreCritDmg*450 + weightedWords*100 - critPenalty*900000
 	case "ANOMALY_AP":
-		score = ap + atkPercent*0.01 + weightedWords*0.001
+		score = panelAP + finalATK*0.000001 + weightedWords*0.001
 	case "ANOMALY_ATK":
-		score = atkPercent + ap*0.001 + weightedWords*0.001
+		score = finalATK + panelAP*0.001 + weightedWords*0.001
 	case "ANOMALY_WORDS":
-		score = weightedWords + ap*0.0001 + atkPercent*0.0001
+		score = weightedWords + panelAP*0.0001 + finalATK*0.0000001
 	case "STRICT_TARGETS", "STRICT_TARGET":
 		// Sort primarily by how close the user-entered fields are to their
 		// targets in display order. Damage and words are only tiebreakers once target
 		// fit is decided.
-		score = -strictPenalty*1000000000 + scoreDamageIndex*critFitFactor*80 + weightedWords*180 + panelCritDmg*120 + finalATK*3 + finalHP*0.03 + finalDEF*0.3 + ap*15
+		score = -strictPenalty*1000000000 + scoreDamageIndex*critFitFactor*80 + weightedWords*180 + panelCritDmg*120 + finalATK*3 + finalHP*0.03 + finalDEF*0.3 + panelAP*15
 	case "UTILITY_BALANCE":
 		// Support/Stun/Defense thresholds are target windows rather than one-sided floors.
 		// After matching selected targets, sort by useful words and visible panel value.
@@ -3982,11 +3987,11 @@ func evaluateBuild(build []Disc, req OptimizeRequest, effects map[string]SetEffe
 	case "RUPTURE_SHEER":
 		res.Reason = fmt.Sprintf("命破模式：%s；计入音擎/触发套装后的实战参考暴击率 %.1f%%；按贯穿力×暴击期望综合排序，伤害指数 %.0f，贯穿力 %.0f，生命 %.0f，攻击 %.0f，面板暴伤 %.1f%%。", goalText, critRate, damageIndex, sheerForce, finalHP, finalATK, panelCritDmg)
 	case "ANOMALY_AP":
-		res.Reason = fmt.Sprintf("异常模式：优先异常精通，异常精通 %.1f，攻击力 %.1f%%，有效词条 %.2f。%s", ap, atkPercent, displayWords, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
+		res.Reason = fmt.Sprintf("异常模式：优先面板异常精通，面板异常精通 %.1f，面板攻击 %.0f，有效词条 %.2f。%s", panelAP, finalATK, displayWords, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
 	case "ANOMALY_ATK":
-		res.Reason = fmt.Sprintf("异常模式：优先攻击力百分比，攻击力 %.1f%%，异常精通 %.1f，有效词条 %.2f。%s", atkPercent, ap, displayWords, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
+		res.Reason = fmt.Sprintf("异常模式：优先面板攻击，面板攻击 %.0f，面板异常精通 %.1f，有效词条 %.2f。%s", finalATK, panelAP, displayWords, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
 	case "ANOMALY_WORDS":
-		res.Reason = fmt.Sprintf("异常模式：优先综合词条，有效词条 %.2f，异常精通 %.1f，攻击力 %.1f%%。%s", displayWords, ap, atkPercent, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
+		res.Reason = fmt.Sprintf("异常模式：优先综合词条，有效词条 %.2f，面板异常精通 %.1f，面板攻击 %.0f。%s", displayWords, panelAP, finalATK, characterCombatReasonSuffix(req, initialEnergyRegen, finalAnomalyMastery, combatStats))
 	case "STRICT_TARGETS", "STRICT_TARGET":
 		if len(strictParts) > 0 {
 			res.Reason = fmt.Sprintf("严格指标模式：按用户填写属性顺序优先贴近目标；%s。完全贴近不可达时，自动按约 1 个副词条为单位向上/向下寻找最近方案。伤害指数 %.0f，有效词条 %.2f。", strings.Join(strictParts, "；"), damageIndex, displayWords)
@@ -4422,16 +4427,16 @@ func sortResults(results []OptimizeResult, mode string) {
 			if !almostEqual(a.Stats["ANOMALY_PROFICIENCY"], b.Stats["ANOMALY_PROFICIENCY"]) {
 				return a.Stats["ANOMALY_PROFICIENCY"] > b.Stats["ANOMALY_PROFICIENCY"]
 			}
-			if !almostEqual(a.Stats["ATK_PERCENT"], b.Stats["ATK_PERCENT"]) {
-				return a.Stats["ATK_PERCENT"] > b.Stats["ATK_PERCENT"]
+			if !almostEqual(a.FinalAttack, b.FinalAttack) {
+				return a.FinalAttack > b.FinalAttack
 			}
 			if !almostEqual(a.WeightedWords, b.WeightedWords) {
 				return a.WeightedWords > b.WeightedWords
 			}
 			return a.Score > b.Score
 		case "ANOMALY_ATK":
-			if !almostEqual(a.Stats["ATK_PERCENT"], b.Stats["ATK_PERCENT"]) {
-				return a.Stats["ATK_PERCENT"] > b.Stats["ATK_PERCENT"]
+			if !almostEqual(a.FinalAttack, b.FinalAttack) {
+				return a.FinalAttack > b.FinalAttack
 			}
 			if !almostEqual(a.Stats["ANOMALY_PROFICIENCY"], b.Stats["ANOMALY_PROFICIENCY"]) {
 				return a.Stats["ANOMALY_PROFICIENCY"] > b.Stats["ANOMALY_PROFICIENCY"]
@@ -4447,8 +4452,8 @@ func sortResults(results []OptimizeResult, mode string) {
 			if !almostEqual(a.Stats["ANOMALY_PROFICIENCY"], b.Stats["ANOMALY_PROFICIENCY"]) {
 				return a.Stats["ANOMALY_PROFICIENCY"] > b.Stats["ANOMALY_PROFICIENCY"]
 			}
-			if !almostEqual(a.Stats["ATK_PERCENT"], b.Stats["ATK_PERCENT"]) {
-				return a.Stats["ATK_PERCENT"] > b.Stats["ATK_PERCENT"]
+			if !almostEqual(a.FinalAttack, b.FinalAttack) {
+				return a.FinalAttack > b.FinalAttack
 			}
 			return a.Score > b.Score
 		case "UTILITY_BALANCE":
