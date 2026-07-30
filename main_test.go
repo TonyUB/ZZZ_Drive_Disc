@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -97,14 +98,14 @@ func TestDualReleaseRendering(t *testing.T) {
 	}
 	versionA := renderIndexPage(index, "A")
 	versionB := renderIndexPage(index, "B")
-	if !bytes.Contains(versionA, []byte("v1.01A")) || !bytes.Contains(versionB, []byte("v1.01B")) {
+	if !bytes.Contains(versionA, []byte("v1.02A")) || !bytes.Contains(versionB, []byte("v1.02B")) {
 		t.Fatal("release label was not rendered for both editions")
 	}
 	if bytes.Contains(versionA, []byte(`id="startScannerBtn"`)) || bytes.Contains(versionA, []byte(`>打开驱动盘扫描器</button>`)) {
-		t.Fatal("V1.01A must not render the scanner button")
+		t.Fatal("V1.02A must not render the scanner button")
 	}
 	if !bytes.Contains(versionA, []byte("const SCANNER_AVAILABLE=false")) {
-		t.Fatal("V1.01A must disable scanner JavaScript")
+		t.Fatal("V1.02A must disable scanner JavaScript")
 	}
 	if !scannerIncludedForEdition("B") || scannerIncludedForEdition("A") {
 		t.Fatal("scanner edition selection is incorrect")
@@ -223,6 +224,92 @@ func TestAnomalyResultMarkupUsesPanelStats(t *testing.T) {
 	}
 }
 
+func remielleScreenshotDiscs() []Disc {
+	return []Disc{
+		testDisc("谶羽之誓", 1, sv("HP_FLAT", 2200), sv("ATK_PERCENT", 3), sv("ANOMALY_PROFICIENCY", 36), sv("ATK_FLAT", 38), sv("PEN_FLAT", 9)),
+		testDisc("静听嘉音", 2, sv("ATK_FLAT", 316), sv("HP_PERCENT", 6), sv("ANOMALY_PROFICIENCY", 27), sv("DEF_PERCENT", 9.6), sv("ATK_PERCENT", 6)),
+		testDisc("谶羽之誓", 3, sv("DEF_FLAT", 184), sv("PEN_FLAT", 9), sv("CRIT_DMG", 4.8), sv("ANOMALY_PROFICIENCY", 27), sv("ATK_PERCENT", 9)),
+		testDisc("静听嘉音", 4, sv("ANOMALY_PROFICIENCY", 92), sv("ATK_PERCENT", 9), sv("CRIT_DMG", 4.8), sv("PEN_FLAT", 18), sv("DEF_FLAT", 30)),
+		testDisc("谶羽之誓", 5, sv("ATK_PERCENT", 30), sv("ATK_FLAT", 38), sv("PEN_FLAT", 18), sv("ANOMALY_PROFICIENCY", 27), sv("CRIT_DMG", 4.8)),
+		testDisc("谶羽之誓", 6, sv("ATK_PERCENT", 30), sv("ANOMALY_PROFICIENCY", 27), sv("ATK_FLAT", 38), sv("CRIT_RATE", 4.8), sv("DEF_FLAT", 30)),
+	}
+}
+
+func remielleScreenshotRequest() OptimizeRequest {
+	return OptimizeRequest{
+		Discs:                    remielleScreenshotDiscs(),
+		RoleSystem:               "ANOMALY",
+		Mode:                     "ANOMALY_AP",
+		CharacterName:            "蕾米埃尔·丹",
+		CharacterElement:         "LUMIFLUX",
+		SetPattern:               "4+2",
+		Required4Set:             "谶羽之誓",
+		Required2Set:             "静听嘉音",
+		BaseHP:                   7482,
+		BaseATK:                  823,
+		BaseDEF:                  600,
+		BaseCritRate:             5,
+		BaseCritDmg:              50,
+		BaseAnomalyMastery:       115,
+		BaseEnergyRegen:          1.2,
+		TargetFinalAttack:        4078,
+		TargetAnomalyProficiency: 436,
+		TopN:                     20,
+		TopKPerSlot:              80,
+		MaxCombinations:          2000000,
+		ExtraStats: map[string]float64{
+			"BASE_ATK":            743,
+			"ATK_PERCENT":         36,
+			"ANOMALY_PROFICIENCY": 170,
+		},
+		CombatExtraStats: map[string]float64{
+			"ANOMALY_PROFICIENCY": 96,
+		},
+		WantedWeights: roleEffectiveWeights("ANOMALY", "ANOMALY_AP", nil),
+	}
+}
+
+func TestRemielleScreenshotPanelCalibration(t *testing.T) {
+	req := remielleScreenshotRequest()
+	res, ok := evaluateBuild(req.Discs, req, nil)
+	if !ok {
+		t.Fatal("蕾米埃尔实机六盘未通过 evaluateBuild")
+	}
+	if res.FinalHP != 10131 || res.FinalAttack != 4078 || res.FinalDefense != 901 {
+		t.Fatalf("蕾米埃尔面板生命/攻击/防御 = %.0f/%.0f/%.0f; want 10131/4078/901", res.FinalHP, res.FinalAttack, res.FinalDefense)
+	}
+	if !almostEqual(res.PanelCritRate, 9.8) || !almostEqual(res.PanelCritDmg, 64.4) {
+		t.Fatalf("蕾米埃尔面板暴击/暴伤 = %.1f/%.1f; want 9.8/64.4", res.PanelCritRate, res.PanelCritDmg)
+	}
+	if res.Stats["ANOMALY_PROFICIENCY"] != 436 || res.GameEffectiveWords != 31 {
+		t.Fatalf("蕾米埃尔异常精通/有效词条 = %.0f/%.0f; want 436/31", res.Stats["ANOMALY_PROFICIENCY"], res.GameEffectiveWords)
+	}
+	if res.Stats["ATK_PERCENT"] != 133 || res.Stats["ATK_FLAT"] != 430 {
+		t.Fatalf("蕾米埃尔汇总攻击力%%/固定攻击 = %.0f/%.0f; want 133/430", res.Stats["ATK_PERCENT"], res.Stats["ATK_FLAT"])
+	}
+}
+
+func TestRemielleScreenshotBuildIsOptimizable(t *testing.T) {
+	resp := optimize(context.Background(), remielleScreenshotRequest())
+	if len(resp.Results) != 1 {
+		t.Fatalf("蕾米埃尔实机六盘应返回 1 个方案，got %d; message=%s counts=%#v", len(resp.Results), resp.Message, resp.CandidateCounts)
+	}
+	if resp.Results[0].FinalAttack != 4078 || resp.Results[0].Stats["ANOMALY_PROFICIENCY"] != 436 {
+		t.Fatalf("优化结果面板 = attack %.0f / AP %.0f; want 4078 / 436", resp.Results[0].FinalAttack, resp.Results[0].Stats["ANOMALY_PROFICIENCY"])
+	}
+}
+
+func TestRemielleDefaultsToUploadedPanelCalibration(t *testing.T) {
+	index, err := webFiles.ReadFile("web/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	marker := "name:'蕾米埃尔',fullName:'蕾米埃尔·丹',rank:'S',element:'LUMIFLUX',faction:'达识结社',role:'ANOMALY',hp:7482,atk:823,def:600,impact:83,coreDefault:'0'"
+	if !bytes.Contains(index, []byte(marker)) {
+		t.Fatal("蕾米埃尔必须默认使用未升级技能 / 实机截图校准口径")
+	}
+}
+
 func TestDualReleaseRoutes(t *testing.T) {
 	versionA, err := newAppMux(false)
 	if err != nil {
@@ -232,7 +319,7 @@ func TestDualReleaseRoutes(t *testing.T) {
 	responseA := httptest.NewRecorder()
 	versionA.ServeHTTP(responseA, requestA)
 	if responseA.Code != http.StatusNotFound {
-		t.Fatalf("V1.01A scanner route status = %d; want 404", responseA.Code)
+		t.Fatalf("V1.02A scanner route status = %d; want 404", responseA.Code)
 	}
 
 	versionB, err := newAppMux(true)
@@ -243,7 +330,7 @@ func TestDualReleaseRoutes(t *testing.T) {
 	responseB := httptest.NewRecorder()
 	versionB.ServeHTTP(responseB, requestB)
 	if responseB.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("V1.01B scanner route status = %d; want 405", responseB.Code)
+		t.Fatalf("V1.02B scanner route status = %d; want 405", responseB.Code)
 	}
 }
 
