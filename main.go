@@ -39,7 +39,7 @@ const appVersion = 121
 // releaseEdition is set to A or B at build time with -ldflags "-X main.releaseEdition=A".
 // appVersion remains the persisted-state schema version so both editions can open
 // the same inventory without migrations.
-const releaseSeries = "1.01"
+const releaseSeries = "1.02"
 
 var releaseEdition = "B"
 
@@ -3345,6 +3345,7 @@ func roleEffectiveWeights(roleSystem string, mode string, current map[string]flo
 		return map[string]float64{
 			"ANOMALY_PROFICIENCY": 1,
 			"ATK_PERCENT":         1,
+			"ATK_FLAT":            1,
 		}
 	}
 	if role == "RUPTURE" {
@@ -3685,7 +3686,7 @@ func gameEffectiveStatSet(req OptimizeRequest) map[string]bool {
 	role := strings.ToUpper(strings.TrimSpace(req.RoleSystem))
 	mode := strings.ToUpper(strings.TrimSpace(req.Mode))
 	if isAnomalyMode(mode) || role == "ANOMALY" {
-		return boolStatSet("ANOMALY_PROFICIENCY", "ATK_PERCENT")
+		return boolStatSet("ANOMALY_PROFICIENCY", "ATK_PERCENT", "ATK_FLAT")
 	}
 	if role == "RUPTURE" {
 		return boolStatSet("CRIT_RATE", "CRIT_DMG", "HP_PERCENT")

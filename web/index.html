@@ -603,7 +603,7 @@
     <div class="flowBlock">
       <h3><span class="stepTag">1</span>代理人选择</h3>
       <div class="tipText">
-        代理人默认按 60 级计入；部分 3.0 代理人可按当前核心技/技能投入选择面板口径。佩洛伊斯默认采用“未升级技能 / 实机截图校准”口径。
+        代理人默认按 60 级计入；部分 3.0 / 3.1 代理人可按当前核心技/技能投入选择面板口径。佩洛伊斯和蕾米埃尔默认采用“未升级技能 / 实机截图校准”口径。
       </div>
       <div class="grid cols-2">
         <label>代理人职业
@@ -795,7 +795,7 @@ const CHARACTERS = [
   {name:'仪玄',role:'RUPTURE',hp:7953,atk:872,def:441,baseHPBonus:420,hpToSheerRatio:0.1,extra:{CRIT_RATE:14.4}},
   {name:'真斗',role:'RUPTURE',hp:7724,atk:680,def:443,baseAtkBonus:75,hpToSheerRatio:0.1,extra:{HP_PERCENT:18}},
   {name:'星徽·比利',role:'RUPTURE',hp:8497,atk:784,def:445,baseAtkBonus:75,hpToSheerRatio:0.1,extra:{CRIT_RATE:14.4}},
-  {name:'蕾米埃尔',fullName:'蕾米埃尔·丹',rank:'S',element:'LUMIFLUX',faction:'达识结社',role:'ANOMALY',hp:7482,atk:823,def:600,impact:83,baseAtkBonus:75,baseAnomalyProficiency:170,baseAnomalyMastery:115,baseEnergyRegen:1.2,extra:{ANOMALY_PROFICIENCY:54},coreDetail:'3.1 创作者体验服 3.1.12 口径：60级核心技F总面板为生命 7482、攻击 898、防御 600、冲击力 83、暴击率 5%、暴击伤害 50%、异常精通 224、异常掌控 115、初始能量自动回复 1.2。额外能力按队伍内 1/2/3 名异常角色提供蕾米埃尔初始攻击力 6%/12%/40% 的全队攻击力，最高 1600；三异常队约需 4000 初始攻击力吃满。队伍增益、异化/耀变倍率及异常积蓄效率不写入通用面板指数。'},
+  {name:'蕾米埃尔',fullName:'蕾米埃尔·丹',rank:'S',element:'LUMIFLUX',faction:'达识结社',role:'ANOMALY',hp:7482,atk:823,def:600,impact:83,coreDefault:'0',baseAtkBonus:75,baseAnomalyProficiency:170,baseAnomalyMastery:115,baseEnergyRegen:1.2,extra:{ANOMALY_PROFICIENCY:54},coreDetail:'3.1 实机面板校准：默认使用“未升级技能 / 实机截图校准”，60级基准为生命 7482、攻击 823、防御 600、冲击力 83、暴击率 5%、暴击伤害 50%、异常精通 170、异常掌控 115、初始能量自动回复 1.2；已升级核心技的账号请按实际等级手动切换 A-F。核心技F总面板为攻击 898、异常精通 224。额外能力按队伍内 1/2/3 名异常角色提供蕾米埃尔初始攻击力 6%/12%/40% 的全队攻击力，最高 1600；队伍增益、异化/耀变倍率及异常积蓄效率不写入通用面板指数。'},
   {name:'维琳娜',fullName:'维琳娜·艾嘉德',rank:'S',element:'WIND',faction:'罗斯凯利法·外务筹策局',role:'ANOMALY',hp:7788,atk:797,def:612,impact:86,baseAtkBonus:75,baseAnomalyProficiency:111,baseAnomalyMastery:112,baseEnergyRegen:1.2,extra:{ANOMALY_PROFICIENCY:54},coreDetail:'60级核心技F总面板：生命 7788、攻击 872、防御 612、冲击力 86、暴击率 5%、暴击伤害 50%、异常精通 165、异常掌控 112、初始能量自动回复 1.2。初始能量自动回复高于 1.2 后，每超 0.01 获得 0.21%伤害与 0.5 异常掌控，最多 35% / 84 点；配装结果会按面板回能自动换算实战参考。'},
   {name:'爱芮',role:'ANOMALY',hp:7749,atk:788,def:619,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
   {name:'爱丽丝',role:'ANOMALY',hp:7673,atk:805,def:606,baseAtkBonus:75,extra:{ANOMALY_MASTERY:36}},
