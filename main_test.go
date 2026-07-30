@@ -99,14 +99,14 @@ func TestDualReleaseRendering(t *testing.T) {
 	}
 	versionA := renderIndexPage(index, "A")
 	versionB := renderIndexPage(index, "B")
-	if !bytes.Contains(versionA, []byte("v1.04A")) || !bytes.Contains(versionB, []byte("v1.04B")) {
+	if !bytes.Contains(versionA, []byte("v1.05A")) || !bytes.Contains(versionB, []byte("v1.05B")) {
 		t.Fatal("release label was not rendered for both editions")
 	}
 	if bytes.Contains(versionA, []byte(`id="startScannerBtn"`)) || bytes.Contains(versionA, []byte(`>打开驱动盘扫描器</button>`)) {
-		t.Fatal("V1.04A must not render the scanner button")
+		t.Fatal("V1.05A must not render the scanner button")
 	}
 	if !bytes.Contains(versionA, []byte("const SCANNER_AVAILABLE=false")) {
-		t.Fatal("V1.04A must disable scanner JavaScript")
+		t.Fatal("V1.05A must disable scanner JavaScript")
 	}
 	if !scannerIncludedForEdition("B") || scannerIncludedForEdition("A") {
 		t.Fatal("scanner edition selection is incorrect")
@@ -145,7 +145,7 @@ func TestReleaseOrderedDropdownsAndReadableDataDetails(t *testing.T) {
 		"releaseOrderOfName(b.character)-releaseOrderOfName(a.character)",
 		`id="characterInfo" class="tipText dataDetail"`,
 		`id="wEngineInfo" class="tipText dataDetail"`,
-		".tipText.dataDetail strong { color: #fff; font-size: 15px; }",
+		".tipText.dataDetail strong { color: #fff; font-size: 16px; }",
 		".tipText.dataDetail .fine { color: #d9e0ef; font-size: 13px; }",
 	} {
 		if !bytes.Contains(index, []byte(marker)) {
@@ -157,10 +157,48 @@ func TestReleaseOrderedDropdownsAndReadableDataDetails(t *testing.T) {
 	}
 }
 
+func TestV105InterfaceEmphasisAndRemielleAvatar(t *testing.T) {
+	index, err := webFiles.ReadFile("web/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, marker := range []string{
+		"h2 { margin: 0 0 12px; font-size: 23px; font-weight: 800; }",
+		".tipText.prominentTip",
+		".tipText.dataDetail .dataNumber",
+		"function highlightDataNumbers(value)",
+		`<div id="driveSetInfo" class="tipText hidden"></div>`,
+		"if(!entries.length){el.textContent=''; el.classList.add('hidden'); return;}",
+	} {
+		if !bytes.Contains(index, []byte(marker)) {
+			t.Fatalf("V1.05 interface marker missing: %s", marker)
+		}
+	}
+	for _, removed := range []string{
+		"本地保存库存，支持强攻/命破/异常/击破/防护/辅助多职业配装。",
+		"选择套装后会显示 3.0 新驱动盘的 2 件套、4 件套与本工具计算口径。",
+		"选择「呼啸沙龙」或「拂晓行纪」后，会在此显示 3.0 套装效果与本工具计算口径。",
+	} {
+		if bytes.Contains(index, []byte(removed)) {
+			t.Fatalf("removed V1.05 interface copy is still present: %s", removed)
+		}
+	}
+	assetMap, err := webFiles.ReadFile("web/assets/asset-map.js")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Contains(assetMap, []byte(`'蕾米埃尔': '/assets/agents/agent-58.png'`)) {
+		t.Fatal("Remielle chibi avatar mapping is missing")
+	}
+	if _, err := webFiles.ReadFile("web/assets/agents/agent-58.png"); err != nil {
+		t.Fatalf("Remielle chibi avatar asset: %v", err)
+	}
+}
+
 func TestCorrectionHistoryIsRetained(t *testing.T) {
 	for _, path := range []string{
 		"RELEASE_NOTES_V1.0.md", "RELEASE_NOTES_V1.01.md", "RELEASE_NOTES_V1.02.md",
-		"RELEASE_NOTES_V1.03.md", "RELEASE_NOTES_V1.04.md", "CORRECTION_LOG.md",
+		"RELEASE_NOTES_V1.03.md", "RELEASE_NOTES_V1.04.md", "RELEASE_NOTES_V1.05.md", "CORRECTION_LOG.md",
 	} {
 		data, err := os.ReadFile(path)
 		if err != nil {
@@ -448,7 +486,7 @@ func TestDualReleaseRoutes(t *testing.T) {
 	responseA := httptest.NewRecorder()
 	versionA.ServeHTTP(responseA, requestA)
 	if responseA.Code != http.StatusNotFound {
-		t.Fatalf("V1.04A scanner route status = %d; want 404", responseA.Code)
+		t.Fatalf("V1.05A scanner route status = %d; want 404", responseA.Code)
 	}
 
 	versionB, err := newAppMux(true)
@@ -459,7 +497,7 @@ func TestDualReleaseRoutes(t *testing.T) {
 	responseB := httptest.NewRecorder()
 	versionB.ServeHTTP(responseB, requestB)
 	if responseB.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("V1.04B scanner route status = %d; want 405", responseB.Code)
+		t.Fatalf("V1.05B scanner route status = %d; want 405", responseB.Code)
 	}
 }
 

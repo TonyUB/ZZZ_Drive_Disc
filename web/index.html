@@ -37,7 +37,6 @@
     .wrap { max-width: 1280px; margin: 0 auto; padding: 18px; }
     .titlebar { display: flex; gap: 16px; align-items: center; justify-content: space-between; }
     h1 { font-size: 24px; margin: 0; letter-spacing: .04em; }
-    .subtitle { color: var(--muted); margin-top: 4px; font-size: 13px; }
     nav { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
     nav a, button, .ghostButton {
       border: 1px solid var(--border);
@@ -65,7 +64,7 @@
       margin: 0 0 18px;
       padding: 18px;
     }
-    h2 { margin: 0 0 12px; font-size: 19px; }
+    h2 { margin: 0 0 12px; font-size: 23px; font-weight: 800; }
     h3 { margin: 14px 0 8px; font-size: 16px; }
     .grid { display: grid; gap: 12px; }
     .grid.cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -162,6 +161,18 @@
       font-style: normal;
     }
     .tipText strong { color: rgba(238, 242, 255, .72); }
+    .tipText.prominentTip {
+      color: #f7f9ff;
+      font-size: 14px;
+      line-height: 1.8;
+      font-style: normal;
+      border-color: rgba(138, 212, 255, .42);
+      border-left-color: #8ad4ff;
+      background: rgba(138, 212, 255, .07);
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .34);
+    }
+    .tipText.prominentTip::before { color: #8ad4ff; }
+    .tipText.prominentTip strong { color: #fff; font-size: 15px; }
     .tipText.dataDetail {
       color: #f7f9ff;
       font-size: 14px;
@@ -173,8 +184,17 @@
       text-shadow: 0 1px 0 rgba(0, 0, 0, .34);
     }
     .tipText.dataDetail::before { content: "数据："; color: #bfe9ff; }
-    .tipText.dataDetail strong { color: #fff; font-size: 15px; }
+    .tipText.dataDetail strong { color: #fff; font-size: 16px; }
     .tipText.dataDetail .fine { color: #d9e0ef; font-size: 13px; }
+    .tipText.dataDetail .dataNumber {
+      display: inline-block;
+      color: #ffd166;
+      font-size: 17px;
+      line-height: 1;
+      font-weight: 850;
+      font-style: normal;
+      text-shadow: 0 0 8px rgba(255, 209, 102, .18);
+    }
     .flowBlock {
       margin-top: 14px;
       padding: 14px;
@@ -411,9 +431,9 @@
     }
 
     .ocrZone {
-      border: 1px dashed var(--border);
+      border: 1px dashed rgba(138, 212, 255, .54);
       border-radius: 12px;
-      background: #101522;
+      background: linear-gradient(135deg, rgba(138, 212, 255, .08), rgba(38, 119, 255, .045));
       padding: 14px;
       margin: 10px 0 12px;
       min-height: 74px;
@@ -421,7 +441,10 @@
       align-items: center;
       justify-content: center;
       text-align: center;
-      color: var(--muted);
+      color: #f7f9ff;
+      font-size: 15px;
+      font-weight: 750;
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .34);
     }
     .ocrZone:focus, .ocrZone.dragover { border-color: var(--accent); outline: none; color: var(--text); }
     .ocrPreview { max-width: 220px; max-height: 220px; border-radius: 10px; border: 1px solid var(--border); background: #05070d; }
@@ -455,7 +478,6 @@
     <div class="titlebar">
       <div>
         <h1>ZZZ Drive Optimizer __APP_RELEASE__｜绝区零驱动盘配装器</h1>
-        <div class="subtitle">本地保存库存，支持强攻/命破/异常/击破/防护/辅助多职业配装。</div>
       </div>
       <div class="row titleActions">
         <button id="exportInteropBtn" class="small" title="可直接导入 zzz_calculator">导出通用驱动盘 JSON</button>
@@ -492,7 +514,7 @@
   <section class="card" id="input">
     <h2>1. 录入驱动盘</h2>
     <!--__SCANNER_BUTTON__-->
-    <div class="tipText">
+    <div class="tipText prominentTip">
       套装名通过下拉选择；默认所有驱动盘均按 <strong>S 级 +15</strong> 处理。主属性会按槽位限定并自动校验；副词条数值请直接填百分比数字，例如 7.2% 填 <strong>7.2</strong>。
     </div>
 
@@ -682,7 +704,7 @@
       <div class="tipText">
         开始配装时，系统只会从上面两个套装名对应的库存中选盘，并强制结果为“所选 4 件套 × 4 + 所选 2 件套 × 2”。
       </div>
-      <div id="driveSetInfo" class="tipText">选择套装后会显示 3.0 新驱动盘的 2 件套、4 件套与本工具计算口径。</div>
+      <div id="driveSetInfo" class="tipText hidden"></div>
       <div class="tipText">
         可按角色需求锁定 4 / 5 / 6 号位主属性；选择“不限制”时，该槽位会从所有主属性候选盘里搜索。
       </div>
@@ -905,6 +927,7 @@ let state = { version: 121, discs: [], setEffects: [], characterBuilds: [], disc
 let inventoryViewMode = localStorage.getItem('zzzInventoryViewMode') === 'table' ? 'table' : 'cards';
 let selectedInventoryDiscId = '';
 function escapeHtml(value){return String(value??'').replace(/[&<>'"]/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[ch]));}
+function highlightDataNumbers(value){return String(value??'').split(/(-?\d+(?:\.\d+)?%?)/g).map((part,index)=>index%2?`<span class="dataNumber">${escapeHtml(part)}</span>`:escapeHtml(part)).join('');}
 function statLabel(type){return STAT_LABELS[type]||type||'未选择';}
 function fmtNum(v,digits=1){const n=Number(v); if(!Number.isFinite(n)) return '0'; return Number.isInteger(n)?String(n):n.toFixed(digits).replace(/\.0+$/,'').replace(/(\.\d*?)0+$/,'$1');}
 function formatStatValue(stat){if(!stat||!stat.type)return '-'; const unit=PERCENT_STATS.has(stat.type)?'%':''; return `${statLabel(stat.type)} ${fmtNum(stat.value,2)}${unit}`;}
@@ -924,7 +947,7 @@ function sameAgentName(a,b){return normalizeReleaseName(a)===normalizeReleaseNam
 function exclusiveWEngineIndexForCharacter(c){if(!c)return -1; const idx=WENGINES.findIndex(e=>sameAgentName(e.character,c.name)); return idx;}
 function fillWEngineControls(){const sel=$('#wEngineSelect'); if(!sel)return; const prev=sel.value; const currentChar=currentCharacter(); const exclusiveIdx=exclusiveWEngineIndexForCharacter(currentChar); const sorted=WENGINES.map((e,i)=>({e,i,exclusive:i===exclusiveIdx})).sort((a,b)=>(b.exclusive?1:0)-(a.exclusive?1:0)||releaseOrderOfWEngine(b.e)-releaseOrderOfWEngine(a.e)||String(a.e.character).localeCompare(String(b.e.character),'zh-CN')||String(a.e.name).localeCompare(String(b.e.name),'zh-CN')); sel.innerHTML='<option value="">不计入音擎</option>'+sorted.map(x=>`<option value="${x.i}">${x.exclusive?'★ 专武：':''}${escapeHtml(wEngineLabel(x.e))}</option>`).join(''); if(prev!==''&&WENGINES[Number(prev)])sel.value=prev; else if(exclusiveIdx>=0)sel.value=String(exclusiveIdx); updateWEngineInfo();}
 function syncWEngineToCharacter({force=true}={}){const sel=$('#wEngineSelect'); if(!sel)return; const c=currentCharacter(); const idx=exclusiveWEngineIndexForCharacter(c); fillWEngineControls(); if(idx>=0 && force){sel.value=String(idx); updateWEngineInfo(); return true;} if(idx<0 && force && sel.value===''){updateWEngineInfo();} return false;}
-function updateWEngineInfo(){const el=$('#wEngineInfo'); if(!el)return; const engine=currentWEngine(); const c=currentCharacter(); if(!engine){const cText=c?`当前角色「${c.name}」暂未自动匹配到专属音擎，或你选择了不计入音擎；可以从下拉菜单手动选择其他角色音擎进行测试。`:'未选择音擎：最终面板只计算基础 5/50、角色成长/核心、驱动盘主副属性与2件套静态效果。'; el.textContent=cText; return;} const rank=selectedWEngineRank(); const panel=wEnginePanelStats(engine); const combat=wEngineCombatStats(engine,rank); const relation=c?(sameAgentName(engine.character,c.name)?'已自动匹配当前代理人专武。':'当前选择的是其他代理人的音擎，请确认这是你想测试的搭配。'):'已选择音擎。'; el.innerHTML=`${escapeHtml(WENGINE_EFFECT_MODE_TEXT)}<br><strong>${escapeHtml(wEngineLabel(engine))} · ${rank}级：</strong><br>${escapeHtml(relation)}<br>面板计入：${escapeHtml(statMapText(panel))}<br>实战/部分排序参考：${escapeHtml(statMapText(combat))}<br>${escapeHtml(engine.note||'')}`;}
+function updateWEngineInfo(){const el=$('#wEngineInfo'); if(!el)return; const engine=currentWEngine(); const c=currentCharacter(); if(!engine){const cText=c?`当前角色「${c.name}」暂未自动匹配到专属音擎，或你选择了不计入音擎；可以从下拉菜单手动选择其他角色音擎进行测试。`:'未选择音擎：最终面板只计算基础 5/50、角色成长/核心、驱动盘主副属性与2件套静态效果。'; el.textContent=cText; return;} const rank=selectedWEngineRank(); const panel=wEnginePanelStats(engine); const combat=wEngineCombatStats(engine,rank); const relation=c?(sameAgentName(engine.character,c.name)?'已自动匹配当前代理人专武。':'当前选择的是其他代理人的音擎，请确认这是你想测试的搭配。'):'已选择音擎。'; el.innerHTML=`${highlightDataNumbers(WENGINE_EFFECT_MODE_TEXT)}<br><strong>${escapeHtml(wEngineLabel(engine))} · ${highlightDataNumbers(`${rank}级`)}：</strong><br>${escapeHtml(relation)}<br>面板计入：${highlightDataNumbers(statMapText(panel))}<br>实战/部分排序参考：${highlightDataNumbers(statMapText(combat))}<br>${highlightDataNumbers(engine.note||'')}`;}
 function currentCharacter(){const value=$('#characterSelect')?.value??''; const idx=Number(value); return Number.isInteger(idx)?CHARACTERS[idx]||null:null;}
 const ELEMENT_LABELS={FIRE:'火',ICE:'冰',ELECTRIC:'电',PHYSICAL:'物理',ETHER:'以太',WIND:'风',LUMIFLUX:'流明'};
 const CORE_LEVEL_ORDER=['0','A','B','C','D','E','F'];
@@ -972,10 +995,10 @@ function updateCharacterInfo(){
   if(totalAP)details.push(`异常精通 ${fmtNum(totalAP,0)}`);
   if(c.baseAnomalyMastery)details.push(`异常掌控 ${fmtNum(c.baseAnomalyMastery,0)}`);
   if(c.baseEnergyRegen)details.push(`初始能量自动回复 ${fmtNum(c.baseEnergyRegen,2)}`);
-  const sheerText=c.role==='RUPTURE'?`<br>命破贯穿力换算：最终攻击×30% + 最终生命×${fmtNum(c.hpToSheerRatio||0,2)}${c.flatSheer?` + ${fmtNum(c.flatSheer,1)}`:''}`:'';
-  const panelNote=(isPyrois(c)&&levelIdx===0&&c.unleveledPanel?.note)?`<br><span class="fine">${escapeHtml(c.unleveledPanel.note)}</span>`:'';
-  const coreText=c.coreDetail?`<br><strong>3.0 机制录入：</strong>${escapeHtml(c.coreDetail)}`:'';
-  el.innerHTML=`<strong>${escapeHtml(c.fullName||c.name)}</strong>（${escapeHtml(identity)}）<br>60级 / ${escapeHtml(coreLevelLabel())}：${escapeHtml(details.join('；'))}<br>拆分计入项：${escapeHtml(statMapText(stats))}${panelNote}${sheerText}${coreText}`;
+  const sheerText=c.role==='RUPTURE'?`<br>命破贯穿力换算：${highlightDataNumbers(`最终攻击×30% + 最终生命×${fmtNum(c.hpToSheerRatio||0,2)}${c.flatSheer?` + ${fmtNum(c.flatSheer,1)}`:''}`)}`:'';
+  const panelNote=(isPyrois(c)&&levelIdx===0&&c.unleveledPanel?.note)?`<br><span class="fine">${highlightDataNumbers(c.unleveledPanel.note)}</span>`:'';
+  const coreText=c.coreDetail?`<br><strong>${highlightDataNumbers('3.0 机制录入：')}</strong>${highlightDataNumbers(c.coreDetail)}`:'';
+  el.innerHTML=`<strong>${escapeHtml(c.fullName||c.name)}</strong>（${escapeHtml(identity)}）<br>${highlightDataNumbers('60级')} / ${escapeHtml(coreLevelLabel())}：${highlightDataNumbers(details.join('；'))}<br>拆分计入项：${highlightDataNumbers(statMapText(stats))}${panelNote}${sheerText}${coreText}`;
 }
 function isAnomalyMode(mode){return ['ANOMALY_AP','ANOMALY_ATK','ANOMALY_WORDS'].includes(mode);}
 function toast(msg){const el=$('#toast'); el.textContent=msg; el.style.display='block'; clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>el.style.display='none',2400);}
@@ -1245,7 +1268,8 @@ function updateDriveSetInfo(){
   if(!el)return;
   const names=[...new Set([$('#required4Set')?.value,$('#required2Set')?.value].filter(Boolean))];
   const entries=names.filter(name=>DRIVE_SET_INFO[name]);
-  if(!entries.length){el.textContent='选择「呼啸沙龙」或「拂晓行纪」后，会在此显示 3.0 套装效果与本工具计算口径。'; return;}
+  if(!entries.length){el.textContent=''; el.classList.add('hidden'); return;}
+  el.classList.remove('hidden');
   el.innerHTML=entries.map(name=>{const info=DRIVE_SET_INFO[name]; return `<strong>${escapeHtml(name)}</strong><br>${escapeHtml(info.two)}<br>${escapeHtml(info.four)}<br><span class="fine">计算口径：${escapeHtml(info.model)}</span>`;}).join('<br><br>');
 }
 function refreshSetControls(selectedSet=''){

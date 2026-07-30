@@ -89,7 +89,7 @@ window.AGENT_ASSETS = Object.freeze({
   '希希芙': '/assets/agents/agent-55.png',
   '普罗米娅': '/assets/agents/agent-56.png',
   '诺姆': '/assets/agents/agent-57.png',
-  '蕾米埃尔': null
+  '蕾米埃尔': '/assets/agents/agent-58.png'
 });
 
 window.AGENT_ASSET_ALIASES = Object.freeze({

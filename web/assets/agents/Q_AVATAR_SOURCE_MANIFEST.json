@@ -390,5 +390,14 @@
         "url":  "https://static.wikia.nocookie.net/zenless-zone-zero/images/d/d5/Avatar_Norma_Hollowell.png/revision/latest?cb=20260628093816",
         "description_url":  "https://zenless-zone-zero.fandom.com/wiki/File:Avatar_Norma_Hollowell.png",
         "local_path":  "C:\\Users\\verac\\Documents\\Codex\\2026-07-20\\zhe\\work\\ZZZ_Q版代理人头像匹配报告\\online_assets\\Avatar_Norma_Hollowell.png"
+    },
+    {
+        "file":  "Avatar_Remielle_Dan.png",
+        "status":  "downloaded",
+        "url":  "https://static.wikia.nocookie.net/zenless-zone-zero/images/2/28/Avatar_Remielle_Dan.png/revision/latest?cb=20260729183537&format=original",
+        "description_url":  "https://zenless-zone-zero.fandom.com/wiki/File:Avatar_Remielle_Dan.png",
+        "local_path":  "web/assets/agents/agent-58.png",
+        "downloaded_at":  "2026-07-30",
+        "sha256":  "185E341F506110EE525B4203852F7AF45DA32549D84BF276FC521BDB66927123"
     }
 ]

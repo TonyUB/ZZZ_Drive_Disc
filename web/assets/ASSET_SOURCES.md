@@ -46,9 +46,9 @@ v1.19 的 56 名代理人头像全部改为 200×200 Q 版 PNG，来源为 [Zenl
 
 ## v1.19 Q版代理人头像
 
-`asset-map.js` 是中文代理人名称到 `agents/agent-XX.png` 的权威映射。已覆盖 56 名唯一代理人；“普尔克拉”已按用户确认删除，只保留国服名称“波可娜”。本次新增凯撒、赛斯、本、潘引壶、照、希希芙、普罗米娅与诺姆。
+`asset-map.js` 是中文代理人名称到 `agents/agent-XX.png` 的权威映射。已覆盖 57 名唯一代理人；“普尔克拉”已按用户确认删除，只保留国服名称“波可娜”。本次新增凯撒、赛斯、本、潘引壶、照、希希芙、普罗米娅与诺姆。
 
-v1.21 新增蕾米埃尔·丹的数据条目；截至打包时，同一 `Agent Avatars` 素材体系尚未提供 `Avatar Remielle Dan.png`，因此按既有规范暂时显示灰底问号，没有用普通立绘冒充 Q 版头像。
+V1.05 搜索时发现同一 `Agent Avatars` 素材体系已于 2026-07-29 补充 `Avatar Remielle Dan.png`，因此使用其原始 200×200 PNG 作为 `agents/agent-58.png`，不再显示灰底问号。来源：[文件页](https://zenless-zone-zero.fandom.com/wiki/File:Avatar_Remielle_Dan.png)；原图 SHA-256：`185E341F506110EE525B4203852F7AF45DA32549D84BF276FC521BDB66927123`；下载日期：2026-07-30。
 
 ## v1.16-v1.18 代理人素材历史记录（v1.19 不再使用）
 
