@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"strings"
 	"testing"
 )
@@ -98,14 +99,14 @@ func TestDualReleaseRendering(t *testing.T) {
 	}
 	versionA := renderIndexPage(index, "A")
 	versionB := renderIndexPage(index, "B")
-	if !bytes.Contains(versionA, []byte("v1.03A")) || !bytes.Contains(versionB, []byte("v1.03B")) {
+	if !bytes.Contains(versionA, []byte("v1.04A")) || !bytes.Contains(versionB, []byte("v1.04B")) {
 		t.Fatal("release label was not rendered for both editions")
 	}
 	if bytes.Contains(versionA, []byte(`id="startScannerBtn"`)) || bytes.Contains(versionA, []byte(`>打开驱动盘扫描器</button>`)) {
-		t.Fatal("V1.03A must not render the scanner button")
+		t.Fatal("V1.04A must not render the scanner button")
 	}
 	if !bytes.Contains(versionA, []byte("const SCANNER_AVAILABLE=false")) {
-		t.Fatal("V1.03A must disable scanner JavaScript")
+		t.Fatal("V1.04A must disable scanner JavaScript")
 	}
 	if !scannerIncludedForEdition("B") || scannerIncludedForEdition("A") {
 		t.Fatal("scanner edition selection is incorrect")
@@ -128,6 +129,46 @@ func TestDualReleaseRendering(t *testing.T) {
 	tip := bytes.Index(versionB, []byte(`<div class="tipText">`))
 	if inputSection < 0 || button <= inputSection || tip <= button {
 		t.Fatalf("scanner button should be the first control in the drive-disc input section: section=%d button=%d tip=%d", inputSection, button, tip)
+	}
+}
+
+func TestReleaseOrderedDropdownsAndReadableDataDetails(t *testing.T) {
+	index, err := webFiles.ReadFile("web/index.html")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, marker := range []string{
+		"const DRIVE_SET_RELEASE_ORDER = Object.fromEntries(BUILTIN_SET_NAMES.map((name,index)=>[name,index+1]));",
+		"function sortSetNames(names){return Array.from(names).sort((a,b)=>releaseOrderOfDriveSet(b)-releaseOrderOfDriveSet(a)||a.localeCompare(b,'zh-CN'));}",
+		"function releaseOrderedRoles()",
+		"fillRoleControl({selectNewest:true});",
+		"releaseOrderOfName(b.character)-releaseOrderOfName(a.character)",
+		`id="characterInfo" class="tipText dataDetail"`,
+		`id="wEngineInfo" class="tipText dataDetail"`,
+		".tipText.dataDetail strong { color: #fff; font-size: 15px; }",
+		".tipText.dataDetail .fine { color: #d9e0ef; font-size: 13px; }",
+	} {
+		if !bytes.Contains(index, []byte(marker)) {
+			t.Fatalf("release-order/readability marker missing: %s", marker)
+		}
+	}
+	if bytes.Contains(index, []byte("$('#roleSystem').value='ATTACK';")) {
+		t.Fatal("optimizer reset must not force the old Attack/Ye Shunguang default")
+	}
+}
+
+func TestCorrectionHistoryIsRetained(t *testing.T) {
+	for _, path := range []string{
+		"RELEASE_NOTES_V1.0.md", "RELEASE_NOTES_V1.01.md", "RELEASE_NOTES_V1.02.md",
+		"RELEASE_NOTES_V1.03.md", "RELEASE_NOTES_V1.04.md", "CORRECTION_LOG.md",
+	} {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatalf("correction history %q: %v", path, err)
+		}
+		if len(bytes.TrimSpace(data)) == 0 {
+			t.Fatalf("correction history %q is empty", path)
+		}
 	}
 }
 
@@ -407,7 +448,7 @@ func TestDualReleaseRoutes(t *testing.T) {
 	responseA := httptest.NewRecorder()
 	versionA.ServeHTTP(responseA, requestA)
 	if responseA.Code != http.StatusNotFound {
-		t.Fatalf("V1.03A scanner route status = %d; want 404", responseA.Code)
+		t.Fatalf("V1.04A scanner route status = %d; want 404", responseA.Code)
 	}
 
 	versionB, err := newAppMux(true)
@@ -418,7 +459,7 @@ func TestDualReleaseRoutes(t *testing.T) {
 	responseB := httptest.NewRecorder()
 	versionB.ServeHTTP(responseB, requestB)
 	if responseB.Code != http.StatusMethodNotAllowed {
-		t.Fatalf("V1.03B scanner route status = %d; want 405", responseB.Code)
+		t.Fatalf("V1.04B scanner route status = %d; want 405", responseB.Code)
 	}
 }
 

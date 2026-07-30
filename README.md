@@ -6,8 +6,8 @@
 
 | 版本 | 内容 | 适合用户 |
 |---|---|---|
-| V1.03A 精简版 | 仅配装器，不显示扫描器入口，不附带扫描器运行库 | 手工录入、图片 OCR 或导入已有 JSON；希望下载体积最小 |
-| V1.03B 离线扫描器版 | 配装器 + ZZZ-Scanner.Next 1.0.45 Windows x64 自包含离线包 | 希望直接从配装器启动扫描器并批量导入库存 |
+| V1.04A 精简版 | 仅配装器，不显示扫描器入口，不附带扫描器运行库 | 手工录入、图片 OCR 或导入已有 JSON；希望下载体积最小 |
+| V1.04B 离线扫描器版 | 配装器 + ZZZ-Scanner.Next 1.0.45 Windows x64 自包含离线包 | 希望直接从配装器启动扫描器并批量导入库存 |
 
 两个版本可以交替使用同一份库存。内部状态结构版本继续为 `121`，不会因为 A/B 版本切换而要求迁移数据。
 
@@ -29,7 +29,7 @@
 
 蕾米埃尔尚无同系列 Q 版头像素材，因此暂时使用灰色问号，不混用普通立绘。
 
-## V1.03B 扫描器使用
+## V1.04B 扫描器使用
 
 1. 解压完整 ZIP，保持主程序和 `scanner` 文件夹在同一目录。
 2. 打开配装器，在“1. 录入驱动盘”顶部点击绿色“打开驱动盘扫描器”。
@@ -55,14 +55,14 @@
 go test ./...
 go vet ./...
 
-# V1.03A：不显示扫描器入口
-go build -buildvcs=false -trimpath -ldflags "-s -w -X main.releaseEdition=A" -o ZZZ_Drive_Optimizer_V1.03A.exe .
+# V1.04A：不显示扫描器入口
+go build -buildvcs=false -trimpath -ldflags "-s -w -X main.releaseEdition=A" -o ZZZ_Drive_Optimizer_V1.04A.exe .
 
-# V1.03B：显示扫描器入口，需要在 EXE 同级放置 scanner 文件夹
-go build -buildvcs=false -trimpath -ldflags "-s -w -X main.releaseEdition=B" -o ZZZ_Drive_Optimizer_V1.03B.exe .
+# V1.04B：显示扫描器入口，需要在 EXE 同级放置 scanner 文件夹
+go build -buildvcs=false -trimpath -ldflags "-s -w -X main.releaseEdition=B" -o ZZZ_Drive_Optimizer_V1.04B.exe .
 ```
 
-详细的长期发布规则见 [RELEASE_POLICY.md](RELEASE_POLICY.md)，本版更新内容见 [RELEASE_NOTES_V1.03.md](RELEASE_NOTES_V1.03.md)。
+详细的长期发布规则见 [RELEASE_POLICY.md](RELEASE_POLICY.md)，历次错误与修正记录见 [CORRECTION_LOG.md](CORRECTION_LOG.md)，本版更新内容见 [RELEASE_NOTES_V1.04.md](RELEASE_NOTES_V1.04.md)。
 
 ## 素材说明
 

@@ -40,6 +40,9 @@ const assetNames = [...assetMap.matchAll(/^\s*'([^']+)'\s*:\s*'\/assets\/agents\
 const engineCharacters = [...index.matchAll(/(?:"character"\s*:\s*"([^"]+)"|character\s*:\s*'([^']+)')/g)].map(match => match[1] || match[2]);
 const releaseOrderBlock = index.match(/const RELEASE_ORDER_BY_NAME\s*=\s*\{([\s\S]*?)\};/);
 const releaseNames = releaseOrderBlock ? [...releaseOrderBlock[1].matchAll(/'([^']+)'\s*:/g)].map(match => match[1]) : [];
+const releaseOrder = releaseOrderBlock ? Function(`"use strict"; return ({${releaseOrderBlock[1]}});`)() : {};
+const builtInSetMatch = index.match(/const BUILTIN_SET_NAMES\s*=\s*(\[[^;]+\]);/);
+const builtInSets = builtInSetMatch ? Function(`"use strict"; return ${builtInSetMatch[1]};`)() : [];
 const characterNames = [...byName.keys()];
 const roleCounts = Object.fromEntries(Object.keys(roleNames).map(role => [roleNames[role], characters.filter(c => c.role === role).length]));
 const unexpectedCharacters = characterNames.filter(name => !expectedRoleByName.has(name));
@@ -50,6 +53,19 @@ const roleMismatches = characters
 const missingRequiredData = characters
   .filter(character => !['hp', 'atk', 'def'].every(field => Number.isFinite(Number(character[field])) && Number(character[field]) > 0))
   .map(character => character.name);
+const releaseSortedCharacters = characters.slice().sort((a, b) => (releaseOrder[b.name] || 0) - (releaseOrder[a.name] || 0) || a.name.localeCompare(b.name, 'zh-CN'));
+const roleReleaseOrder = Object.keys(roleNames).map(role => ({
+  role,
+  label: roleNames[role],
+  order: characters.filter(character => character.role === role).reduce((best, character) => Math.max(best, releaseOrder[character.name] || 0), 0),
+})).sort((a, b) => b.order - a.order || a.label.localeCompare(b.label, 'zh-CN'));
+const latestDriveSets = builtInSets.slice().reverse();
+const releaseOrderingErrors = [];
+if (releaseSortedCharacters[0]?.name !== '蕾米埃尔') releaseOrderingErrors.push(`最新代理人应为蕾米埃尔，实际为${releaseSortedCharacters[0]?.name || '空'}`);
+if (roleReleaseOrder[0]?.role !== 'ANOMALY') releaseOrderingErrors.push(`默认最新职业应为异常，实际为${roleReleaseOrder[0]?.label || '空'}`);
+if (latestDriveSets[0] !== '荆棘玫瑰' || latestDriveSets[1] !== '谶羽之誓') releaseOrderingErrors.push(`最新驱动盘顺序错误：${latestDriveSets.slice(0, 2).join('、')}`);
+if (!index.includes("function sortSetNames(names){return Array.from(names).sort((a,b)=>releaseOrderOfDriveSet(b)-releaseOrderOfDriveSet(a)")) releaseOrderingErrors.push('套装下拉未使用版本倒序函数');
+if (!index.includes('fillRoleControl({selectNewest:true});')) releaseOrderingErrors.push('初始/清空流程未选择最新职业');
 
 const report = {
   records: characters.length,
@@ -65,6 +81,10 @@ const report = {
   orphanAvatar: assetNames.filter(name => !characterNames.includes(name)),
   missingWEngine: characterNames.filter(name => !engineCharacters.includes(name)),
   missingReleaseOrder: characterNames.filter(name => !releaseNames.includes(name)),
+  latestCharacter: releaseSortedCharacters[0]?.name || '',
+  roleReleaseOrder,
+  latestDriveSets: latestDriveSets.slice(0, 6),
+  releaseOrderingErrors,
   roster: characters.map(character => ({
     name: character.name,
     role: roleNames[character.role] || character.role,
@@ -83,7 +103,7 @@ const report = {
 };
 
 process.stdout.write(`${JSON.stringify(report, null, 2)}\n`);
-const blockingKeys = ['roleMismatches', 'missingExpectedCharacters', 'unexpectedCharacters', 'missingRequiredData', 'missingAvatar', 'orphanAvatar', 'missingWEngine', 'missingReleaseOrder'];
+const blockingKeys = ['roleMismatches', 'missingExpectedCharacters', 'unexpectedCharacters', 'missingRequiredData', 'missingAvatar', 'orphanAvatar', 'missingWEngine', 'missingReleaseOrder', 'releaseOrderingErrors'];
 if (characters.length !== expectedRoleByName.size || characterNames.length !== expectedRoleByName.size || Object.keys(report.duplicateRoles).length || blockingKeys.some(key => report[key].length)) {
   process.exitCode = 1;
 }

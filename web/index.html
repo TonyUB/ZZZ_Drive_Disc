@@ -162,6 +162,19 @@
       font-style: normal;
     }
     .tipText strong { color: rgba(238, 242, 255, .72); }
+    .tipText.dataDetail {
+      color: #f7f9ff;
+      font-size: 14px;
+      line-height: 1.8;
+      font-style: normal;
+      border-color: rgba(138, 212, 255, .34);
+      border-left-color: rgba(138, 212, 255, .78);
+      background: rgba(138, 212, 255, .055);
+      text-shadow: 0 1px 0 rgba(0, 0, 0, .34);
+    }
+    .tipText.dataDetail::before { content: "数据："; color: #bfe9ff; }
+    .tipText.dataDetail strong { color: #fff; font-size: 15px; }
+    .tipText.dataDetail .fine { color: #d9e0ef; font-size: 13px; }
     .flowBlock {
       margin-top: 14px;
       padding: 14px;
@@ -631,7 +644,7 @@
           </select>
         </label>
       </div>
-      <div id="characterInfo" class="tipText">选择代理人后，会把 60 级基础生命/攻击/防御、所选核心技/面板状态和可量化属性计入。</div>
+      <div id="characterInfo" class="tipText dataDetail">选择代理人后，会把 60 级基础生命/攻击/防御、所选核心技/面板状态和可量化属性计入。</div>
     </div>
 
     <div class="flowBlock">
@@ -653,7 +666,7 @@
           </select>
         </label>
       </div>
-      <div id="wEngineInfo" class="tipText">选择音擎后，满级基础攻击和高级属性会计入角色界面面板；专武技能类暴击率不算入期望暴击率。</div>
+      <div id="wEngineInfo" class="tipText dataDetail">选择音擎后，满级基础攻击和高级属性会计入角色界面面板；专武技能类暴击率不算入期望暴击率。</div>
     </div>
 
     <div class="flowBlock">
@@ -763,6 +776,7 @@ const STAT_LABELS = {
 const PERCENT_STATS = new Set(['HP_PERCENT','ATK_PERCENT','DEF_PERCENT','CRIT_RATE','CRIT_DMG','PEN_RATIO','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','LUMIFLUX_DMG','ELEMENT_DMG','ANOMALY_DMG_BONUS','SQUAD_DMG_BONUS','SHEER_DMG_BONUS','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE']);
 const STAT_ORDER = ['CRIT_RATE','CRIT_DMG','ATK_PERCENT','HP_PERCENT','ANOMALY_PROFICIENCY','PEN_FLAT','PEN_RATIO','ATK_FLAT','HP_FLAT','BASE_ATK','BASE_HP','BASE_DEF','SHEER_FORCE_FLAT','DEF_PERCENT','DEF_FLAT','ANOMALY_MASTERY','ENERGY_REGEN','IMPACT','FIRE_DMG','ICE_DMG','ELECTRIC_DMG','PHYSICAL_DMG','ETHER_DMG','WIND_DMG','LUMIFLUX_DMG','ELEMENT_DMG','ANOMALY_DMG_BONUS','SQUAD_DMG_BONUS','SHEER_DMG_BONUS','INITIAL_ENERGY_REGEN','ANOMALY_MASTERY_FLAT','FINAL_ANOMALY_MASTERY','VELINA_CORE_DMG_BONUS','VORTEX_WINDSWEPT_DMG','ETHER_RES_IGNORE'];
 const BUILTIN_SET_NAMES = ['啄木鸟电音','震星迪斯科','河豚电音','激素朋克','摇摆爵士','灵魂摇滚','自由蓝调','极地重金属','炎狱重金属','雷暴重金属','獠牙重金属','混沌重金属','原始朋克','混沌爵士','折枝剑歌','静听嘉音','法厄同之歌','如影相随','云岿如我','山大王','月光骑士颂','拂晓生花','雪兔梦游仙境','囚徒手记','流光咏叹','沧浪行歌','呼啸沙龙','拂晓行纪','荧光蛛眼','谶羽之誓','荆棘玫瑰'];
+const DRIVE_SET_RELEASE_ORDER = Object.fromEntries(BUILTIN_SET_NAMES.map((name,index)=>[name,index+1]));
 const DRIVE_SET_INFO = {
   '呼啸沙龙': {two:'2件套：风属性伤害 +10%。',four:'4件套：发动强化特殊技时异常精通 +25，最多 2 层、持续 40 秒；触发风化后造成伤害 +18%，持续 40 秒。',model:'本工具的实战参考按 2 层满叠计入异常精通 +50，并按已触发风化计入通用增伤 +18%；不混入角色详情面板。'},
   '拂晓行纪': {two:'2件套：以太伤害 +10%。',four:'4件套：以太属性代理人暴击伤害 +30%；发动强化特殊技或终结技时攻击力 +10%，持续 30 秒。',model:'v1.18 延续 Pro 校准口径：4件套暴伤 +30% 与触发攻击力 +10% 均不写入角色详情面板；结果区“有效词条”按游戏面板口径显示；二者作为实战参考/排序参考显示。'},
@@ -871,6 +885,11 @@ function normalizeReleaseName(name){return String(name||'').trim().replace(/^星
 function releaseOrderOfName(name){return RELEASE_ORDER_BY_NAME[normalizeReleaseName(name)] ?? 0;}
 function releaseOrderOfCharacter(c){return releaseOrderOfName(c?.releaseName||c?.name);}
 function releaseOrderOfWEngine(e){return e?.releaseOrder ?? releaseOrderOfName(e?.character);}
+function releaseOrderOfDriveSet(name){return DRIVE_SET_RELEASE_ORDER[String(name||'').trim()] ?? 0;}
+const ROLE_LABELS={ATTACK:'强攻',RUPTURE:'命破',ANOMALY:'异常',STUN:'击破',DEFENSE:'防护',SUPPORT:'辅助'};
+function roleReleaseOrder(role){return CHARACTERS.filter(c=>c.role===role).reduce((best,c)=>Math.max(best,releaseOrderOfCharacter(c)),0);}
+function releaseOrderedRoles(){return Object.entries(ROLE_LABELS).map(([role,label])=>({role,label,order:roleReleaseOrder(role)})).sort((a,b)=>b.order-a.order||a.label.localeCompare(b.label,'zh-CN'));}
+function fillRoleControl({selectNewest=false}={}){const sel=$('#roleSystem'); if(!sel)return; const prev=sel.value; const roles=releaseOrderedRoles(); sel.innerHTML=roles.map(x=>`<option value="${x.role}">${escapeHtml(x.label)}</option>`).join(''); const fallback=roles[0]?.role||'ATTACK'; sel.value=selectNewest?fallback:(roles.some(x=>x.role===prev)?prev:fallback);}
 const STRICT_MODE_OPTION = ['STRICT_TARGETS','遵守严格指标'];
 const ROLE_MODES = {ATTACK:[['MAX_CD','暴击率达标后，最高暴伤'],['MAX_WORDS','暴击率达标后，最高有效词条数'],STRICT_MODE_OPTION],RUPTURE:[['MAX_CD','暴击率达标后，最高暴伤'],['RUPTURE_SHEER','暴击率达标后，贯穿输出综合最高'],['MAX_WORDS','暴击率达标后，最高有效词条数'],STRICT_MODE_OPTION],ANOMALY:[['ANOMALY_AP','优先最高异常精通'],['ANOMALY_ATK','优先最高攻击力'],['ANOMALY_WORDS','综合词条数最高'],STRICT_MODE_OPTION],STUN:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION],DEFENSE:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION],SUPPORT:[['UTILITY_BALANCE','属性目标达标后，综合词条最高'],STRICT_MODE_OPTION]};
 const WENGINE_EFFECT_MODE_TEXT = '音擎60级基础攻击力和高级属性计入角色界面面板；音擎技能属性按说明作为满触发实战参考，通常不混入角色界面暴击率。期望暴击率只按角色详情面板值判断；敌人抗性、队伍条件与专属倍率若无法通用量化，只展示而不写入期望指数。';
@@ -1093,7 +1112,7 @@ function occupiedPolicySummary(){
   const policy=$('#occupiedPolicy')?.value||'ALL';
   return policy==='AVOID_OCCUPIED'?'占用策略：避免使用已被其他代理人占用的驱动盘':'占用策略：使用所有驱动盘';
 }
-function characterBuildOptions(){ensureCharacterBuilds(); return state.characterBuilds.map(b=>b.name||b.character).filter(Boolean);}
+function characterBuildOptions(){ensureCharacterBuilds(); return state.characterBuilds.slice().sort((a,b)=>releaseOrderOfName(b.character)-releaseOrderOfName(a.character)||String(a.name||a.character).localeCompare(String(b.name||b.character),'zh-CN')).map(b=>b.name||b.character).filter(Boolean);}
 function refreshAgentFilterControls(){
   const sel=$('#filterAgent'); if(!sel)return;
   const prev=sel.value;
@@ -1153,7 +1172,7 @@ function expectedMainStatValue(type){return DEFAULT_MAIN_STAT_VALUES[type];}
 function isMainStatValueClose(value,expected){const v=Number(value), e=Number(expected); if(!Number.isFinite(v)||!Number.isFinite(e))return false; return Math.abs(v-e)<=Math.max(0.12,Math.abs(e)*0.015);}
 function validateMainStatFormValue(opts={}){const type=$('#mainStatType').value; const input=$('#mainStatValue'); const hint=$('#mainStatValueHint'); const expected=expectedMainStatValue(type); input?.classList?.remove('ocrDoubt'); $('#mainStatType')?.classList?.remove('ocrDoubt'); if(!type||!Number.isFinite(Number(expected))){if(hint)hint.textContent='会按 S 级 +15 固定数值校验。'; return true;} const suffix=PERCENT_STATS.has(type)?'%':''; if(hint)hint.textContent=`S级+15 ${statLabel(type)} 主属性固定值：${fmtNum(expected,2)}${suffix}`; const value=Number(input.value); if(!Number.isFinite(value))return false; if(isMainStatValueClose(value,expected)){if(Math.abs(value-expected)>1e-9)input.value=expected; return true;} input.classList.add('ocrDoubt'); $('#mainStatType').classList.add('ocrDoubt'); if(hint)hint.textContent=`当前值 ${fmtNum(value,2)}${suffix} 与 S级+15 固定值 ${fmtNum(expected,2)}${suffix} 不一致，保存时会自动修正。`; if(opts.correct){input.value=expected; input.classList.remove('ocrDoubt'); $('#mainStatType').classList.remove('ocrDoubt'); if(hint)hint.textContent=`已按 S级+15 修正为 ${fmtNum(expected,2)}${suffix}`; if(!opts.silent)toast(`主属性数值已按 S级+15 修正为 ${fmtNum(expected,2)}${suffix}`); return true;} return false;}
 function applyMainStatDefault(force=false){const type=$('#mainStatType').value; const input=$('#mainStatValue'); if(!type)return; const fallback=DEFAULT_MAIN_STAT_VALUES[type]; if(force||input.value==='')input.value=fallback??''; validateMainStatFormValue({silent:true});}
-function fillStaticControls(){for(let i=1;i<=6;i++){const opt=document.createElement('option'); opt.value=String(i); opt.textContent=`${i} 号位`; $('#filterSlot').appendChild(opt);} fillStatSelect($('#filterStat'),{blank:true}); setupStatRows(); fillMainStatSelect(); fillOptimizerMainLocks(); refreshModeOptions();}
+function fillStaticControls(){for(let i=1;i<=6;i++){const opt=document.createElement('option'); opt.value=String(i); opt.textContent=`${i} 号位`; $('#filterSlot').appendChild(opt);} fillStatSelect($('#filterStat'),{blank:true}); setupStatRows(); fillMainStatSelect(); fillOptimizerMainLocks(); fillRoleControl({selectNewest:true}); refreshModeOptions();}
 function fillOptimizerMainLocks(){for(const slot of [4,5,6]){const sel=$(`#lockSlot${slot}Main`); if(!sel)continue; const prev=sel.value; const allowed=SLOT_MAIN_STAT_OPTIONS[slot]||[]; sel.innerHTML='<option value="">不限制</option>'+allowed.map(t=>`<option value="${escapeHtml(t)}">${escapeHtml(statLabel(t))}</option>`).join(''); if(allowed.includes(prev))sel.value=prev; else sel.value='';}}
 function collectSlotAllowedMainStats(){const out={}; for(const slot of [4,5,6]){const v=$(`#lockSlot${slot}Main`)?.value||''; if(v)out[String(slot)]=[v];} return out;}
 function selectedMainLockSummary(){const parts=[]; for(const slot of [4,5,6]){const v=$(`#lockSlot${slot}Main`)?.value||''; if(v)parts.push(`${slot}号位：${statLabel(v)}`);} return parts.length?parts.join('；'):'4/5/6号位主属性不限制';}
@@ -1218,7 +1237,7 @@ function refreshModeOptions(){
   maybeAutoStrictMode();
   fillCharacterControls();
 }
-function sortSetNames(names){return Array.from(names).sort((a,b)=>a.localeCompare(b,'zh-CN'));}
+function sortSetNames(names){return Array.from(names).sort((a,b)=>releaseOrderOfDriveSet(b)-releaseOrderOfDriveSet(a)||a.localeCompare(b,'zh-CN'));}
 function allSetNames(){const names=new Set(BUILTIN_SET_NAMES); for(const d of state.discs||[])if(d.setName)names.add(d.setName); return sortSetNames(names);}
 function inventorySetNames(){const names=new Set(); for(const d of state.discs||[])if(d&&String(d.setName||'').trim())names.add(String(d.setName).trim()); return sortSetNames(names);}
 function updateDriveSetInfo(){
@@ -1688,14 +1707,15 @@ function resetOptimizerOptions(){
   $('#wEngineSelect').value='';
   $('#wEngineRank').value='1';
   updateWEngineInfo();
-  $('#roleSystem').value='ATTACK';
+  fillRoleControl({selectNewest:true});
+  const defaultRole=$('#roleSystem').value||'ATTACK';
   refreshModeOptions();
   const charSel=$('#characterSelect');
   if(charSel&&charSel.options.length)charSel.selectedIndex=0;
   modeTouchedByUser=false;
-  const attackModes=ROLE_MODES.ATTACK||[];
-  if(attackModes.length)$('#mode').value=attackModes[0][0];
-  $('#targetCritRate').value='80';
+  const defaultModes=ROLE_MODES[defaultRole]||ROLE_MODES.ATTACK||[];
+  if(defaultModes.length)$('#mode').value=defaultModes[0][0];
+  $('#targetCritRate').value=(defaultRole==='ATTACK'||defaultRole==='RUPTURE')?'80':'0';
   $('#targetCritDmg').value='0';
   $('#targetFinalAttack').value='0';
   $('#targetFinalHP').value='0';
@@ -1704,8 +1724,8 @@ function resetOptimizerOptions(){
   const occupiedPolicy=$('#occupiedPolicy'); if(occupiedPolicy)occupiedPolicy.value='ALL';
   refreshFloorControls();
   onCharacterChanged();
-  lastOptimizeMode='MAX_CD';
-  lastOptimizeRole='ATTACK';
+  lastOptimizeMode=defaultModes[0]?.[0]||'MAX_CD';
+  lastOptimizeRole=defaultRole;
 }
 async function clearResults(){
   optimizeRunToken++;
